@@ -1,0 +1,119 @@
+export type MarketType = 'spot' | 'futures';
+export type Direction = 'long' | 'short';
+export type SetupType =
+  | 'new_listing_pullback_breakout'
+  | 'volume_breakout_previous_high'
+  | 'extreme_fear_rebound'
+  | 'other';
+export type EmotionBefore = 'calm' | 'anxious' | 'greedy' | 'revenge' | 'fomo';
+export type TradeStatus = 'planned' | 'reviewed';
+export type LossType = 'strategy_loss' | 'discipline_loss' | 'no_loss';
+export type AlertType = 'stop_loss' | 'take_profit';
+
+export interface AccountSettings {
+  id: number;
+  initialBalance: number;
+  currentBalance: number;
+  maxRiskPerTradePercent: number;
+  maxDailyLossPercent: number;
+  maxConsecutiveLosses: number;
+  reviewReminderTime: string;
+  preTradeCheckEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Trade {
+  id: number;
+  symbol: string;
+  marketType: MarketType;
+  leverage: number;
+  direction: Direction;
+  entryPrice: number;
+  stopLossPrice: number;
+  takeProfitPrice: number | null;
+  positionSize: number;
+  setupType: SetupType;
+  entryReason: string;
+  emotionBefore: EmotionBefore;
+  isFollowingSystem: boolean;
+  screenshotNote: string;
+  status: TradeStatus;
+  exitPrice: number | null;
+  pnl: number | null;
+  followedPlan: boolean | null;
+  movedStopLoss: boolean | null;
+  addedPosition: boolean | null;
+  earlyTakeProfit: boolean | null;
+  impulsiveTrade: boolean | null;
+  lossType: LossType | null;
+  reviewNote: string | null;
+  nextImprovement: string | null;
+  createdAt: string;
+  closedAt: string | null;
+  reviewedAt: string | null;
+}
+
+export interface AlertLog {
+  id: number;
+  tradeId: number;
+  symbol: string;
+  alertType: AlertType;
+  triggerPrice: number;
+  currentPrice: number;
+  message: string;
+  createdAt: string;
+}
+
+export interface CreateTradeInput {
+  symbol: string;
+  marketType: MarketType;
+  leverage: number;
+  direction: Direction;
+  entryPrice: number;
+  stopLossPrice: number;
+  takeProfitPrice: number | null;
+  positionSize: number;
+  setupType: SetupType;
+  entryReason: string;
+  emotionBefore: EmotionBefore;
+  isFollowingSystem: boolean;
+  screenshotNote: string;
+}
+
+export interface ReviewTradeInput {
+  tradeId: number;
+  exitPrice: number;
+  pnl: number;
+  followedPlan: boolean;
+  movedStopLoss: boolean;
+  addedPosition: boolean;
+  earlyTakeProfit: boolean;
+  impulsiveTrade: boolean;
+  lossType: LossType;
+  reviewNote: string;
+  nextImprovement: string;
+}
+
+export interface DashboardSummary {
+  account: AccountSettings;
+  todayPnl: number;
+  todayTradeCount: number;
+  todayConsecutiveLosses: number;
+  canTradeToday: boolean;
+  warnings: string[];
+}
+
+export interface StatisticsSummary {
+  totalTrades: number;
+  winRate: number;
+  totalPnl: number;
+  averageWin: number;
+  averageLoss: number;
+  profitLossRatio: number;
+  maxConsecutiveLosses: number;
+  disciplineExecutionRate: number;
+  disciplineLossCount: number;
+  bestSetupType: SetupType | null;
+  worstSetupType: SetupType | null;
+}

@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Trade Discipline Journal",
+    "slug": "trade-discipline-journal",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#F6F7F2"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.chanqic585.tradedisciplinejournal"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "8224d0c9-d209-43ab-a244-5db522f73586"
+      }
+    }
+  }
+}

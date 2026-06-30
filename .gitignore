@@ -1,0 +1,15 @@
+node_modules/
+.expo/
+.pnpm-eas-store/
+.pnpm-home/
+.env.local
+dist/
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.db
+*.sqlite
+build-android-apk.log
+eas-build*.log
+eas-build*.json

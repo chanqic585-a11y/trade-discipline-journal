@@ -1,0 +1,32 @@
+{
+  "name": "trade-discipline-journal",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo/AppEntry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "build:android-apk": "eas build -p android --profile preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "expo": "~51.0.39",
+    "expo-notifications": "~0.28.19",
+    "expo-sqlite": "~14.0.6",
+    "expo-status-bar": "~1.12.1",
+    "react": "18.2.0",
+    "react-native": "0.74.5"
+  },
+  "devDependencies": {
+    "@types/react": "~18.2.79",
+    "eas-cli": "20.4.0",
+    "typescript": "~5.3.3"
+  },
+  "pnpm": {
+    "ignoredBuiltDependencies": [
+      "dtrace-provider"
+    ]
+  }
+}
