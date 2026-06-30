@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Field, Button, SegmentedControl } from '../components/Controls';
 import { Screen } from '../components/Screen';
 import { createTrade, getAccountSettings } from '../db/repositories';
@@ -21,6 +21,15 @@ function toNumber(value: string) {
   return Number.isFinite(parsed) ? parsed : NaN;
 }
 
+const checklistItems = [
+  '我不是为了回本开单',
+  '我不是因为害怕错过',
+  '我已经设置止损',
+  '本单风险不超过账户 2%',
+  '这笔交易符合我的形态系统',
+  '我已准备好接受止损',
+];
+
 export function TradePlanScreen({ onSaved }: { onSaved: () => void }) {
   const [symbol, setSymbol] = useState('');
   const [marketType, setMarketType] = useState<MarketType>('spot');
@@ -36,9 +45,11 @@ export function TradePlanScreen({ onSaved }: { onSaved: () => void }) {
   const [isFollowingSystem, setIsFollowingSystem] = useState(true);
   const [screenshotNote, setScreenshotNote] = useState('');
   const [saving, setSaving] = useState(false);
+  const [checklist, setChecklist] = useState<Record<string, boolean>>({});
   const effectiveDirection: Direction = marketType === 'spot' ? 'long' : direction;
   const effectiveLeverageText = marketType === 'spot' ? '1' : leverageText;
   const okxInstrumentPreview = symbol.trim() ? toOkxInstrumentId(symbol, marketType) : '-';
+  const checklistComplete = checklistItems.every((item) => checklist[item]);
 
   const maxLossPreview = useMemo(() => {
     return calculateMaxLoss(
@@ -61,8 +72,8 @@ export function TradePlanScreen({ onSaved }: { onSaved: () => void }) {
     if (!stopLossPrice.trim() || !Number.isFinite(parsedStop) || parsedStop <= 0) {
       return Alert.alert('止损必填', '必须填写有效止损价。');
     }
-    if (!Number.isFinite(leverage) || leverage < 1 || leverage > 10) {
-      return Alert.alert('杠杆限制', '杠杆范围必须是 1 到 10。现货固定为 1x。');
+    if (!Number.isFinite(leverage) || leverage < 1 || leverage > 5) {
+      return Alert.alert('杠杆限制', '杠杆范围必须是 1 到 5。现货固定为 1x。');
     }
     if (!Number.isFinite(parsedEntry) || parsedEntry <= 0) return Alert.alert('入场价无效', '请填写有效入场价。');
     if (!Number.isFinite(parsedPosition) || parsedPosition <= 0) {
@@ -70,6 +81,9 @@ export function TradePlanScreen({ onSaved }: { onSaved: () => void }) {
     }
     if (parsedTakeProfit !== null && (!Number.isFinite(parsedTakeProfit) || parsedTakeProfit <= 0)) {
       return Alert.alert('止盈价无效', '止盈价需要为空或有效数字。');
+    }
+    if (!checklistComplete) {
+      return Alert.alert('交易前检查未完成', '请完成全部 Pre-Trade Checklist 后再保存计划。');
     }
 
     const createCheck = await canCreateNewTrade();
@@ -146,11 +160,11 @@ export function TradePlanScreen({ onSaved }: { onSaved: () => void }) {
       <View style={styles.infoBox}>
         <Text style={styles.infoText}>OKX 监听交易对：{okxInstrumentPreview}</Text>
         <Text style={styles.infoText}>
-          {marketType === 'spot' ? '现货固定 1x 且只记录做多计划。' : '合约允许 1-10x，并支持做多/做空。'}
+          {marketType === 'spot' ? '现货固定 1x 且只记录做多计划。' : '合约允许 1-5x，并支持做多/做空。'}
         </Text>
       </View>
       <Field
-        label={marketType === 'spot' ? '杠杆（现货固定 1x）' : '杠杆 1-10'}
+        label={marketType === 'spot' ? '杠杆（现货固定 1x）' : '杠杆 1-5'}
         value={effectiveLeverageText}
         onChangeText={setLeverageText}
         keyboardType="numeric"
@@ -198,7 +212,24 @@ export function TradePlanScreen({ onSaved }: { onSaved: () => void }) {
         onChange={setIsFollowingSystem}
       />
       <Field label="截图备注" value={screenshotNote} onChangeText={setScreenshotNote} multiline />
-      <Button label={saving ? 'Saving...' : '保存交易计划'} onPress={savePlan} />
+
+      <View style={styles.checklistBox}>
+        <Text style={styles.checklistTitle}>Pre-Trade Checklist</Text>
+        {checklistItems.map((item) => (
+          <TouchableOpacity
+            key={item}
+            style={styles.checkItem}
+            onPress={() => setChecklist((current) => ({ ...current, [item]: !current[item] }))}
+          >
+            <View style={[styles.checkbox, checklist[item] && styles.checkboxChecked]}>
+              <Text style={styles.checkmark}>{checklist[item] ? '✓' : ''}</Text>
+            </View>
+            <Text style={styles.checkText}>{item}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Button label={saving ? 'Saving...' : '保存交易计划'} onPress={savePlan} tone={checklistComplete ? 'primary' : 'neutral'} />
     </Screen>
   );
 }
@@ -233,6 +264,48 @@ const styles = StyleSheet.create({
   infoText: {
     color: colors.text,
     fontSize: 13,
+    lineHeight: 19,
+  },
+  checklistBox: {
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  checklistTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: spacing.sm,
+  },
+  checkItem: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    paddingVertical: 8,
+  },
+  checkbox: {
+    alignItems: 'center',
+    borderColor: colors.border,
+    borderRadius: 6,
+    borderWidth: 1,
+    height: 24,
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+    width: 24,
+  },
+  checkboxChecked: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  checkmark: {
+    color: colors.surface,
+    fontWeight: '800',
+  },
+  checkText: {
+    color: colors.text,
+    flex: 1,
     lineHeight: 19,
   },
 });

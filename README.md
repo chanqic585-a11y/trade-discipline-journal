@@ -7,12 +7,15 @@ This app is not investment advice. It only connects to OKX public market data fo
 ## Features
 
 - Dashboard with discipline-first status.
-- Trade Plan form with stop-loss, leverage, emotion, and risk checks.
+- Initial Setup for local starting capital. Suggested default: 15000.
+- Dashboard with discipline score.
+- Trade Plan form with stop-loss, leverage, emotion, Pre-Trade Checklist, and risk checks.
 - Review Trade flow for unreviewed planned trades.
 - Trade History with filters: all, win, loss, discipline loss, unreviewed.
 - Statistics: win rate, total PnL, average win/loss, profit-loss ratio, max consecutive losses, discipline execution, setup extremes.
 - Rules & Reminders for local risk settings and local review notification.
 - OKX public market monitor for planned trades while the app is open in the foreground.
+- Four bottom tabs: 首页, 计划, 复盘, 我的. Monitor, Statistics, Rules, and History live under 我的.
 - SQLite local storage. No login and no cloud sync.
 
 ## OKX Price Alerts
@@ -34,7 +37,7 @@ Instrument mapping in the MVP:
 - Futures plans use `SYMBOL-USDT-SWAP`, for example `BTC` becomes `BTC-USDT-SWAP`.
 - If the symbol already contains `-`, the app uses it as the OKX instrument id.
 - Spot plans are fixed to 1x and long-only in this MVP.
-- Futures plans support long/short direction and 1-10x leverage.
+- Futures plans support long/short direction and 1-5x leverage.
 
 Trigger rules:
 
@@ -51,6 +54,30 @@ currentPrice <= takeProfitPrice -> take-profit alert
 When a trigger fires, the app writes an `AlertLogs` row, shows an in-app alert, and sends a local notification with sound. If the WebSocket disconnects while the app is running, it retries automatically.
 
 MVP limitation: this is a foreground monitor. If Android kills the app or the phone blocks background activity, the WebSocket listener can stop. A later version can use an Android foreground service or a server-side monitor if background reliability becomes the priority.
+
+## Pre-Trade Checklist
+
+Before saving a trade plan, every checklist item must be confirmed:
+
+- 我不是为了回本开单
+- 我不是因为害怕错过
+- 我已经设置止损
+- 本单风险不超过账户 2%
+- 这笔交易符合我的形态系统
+- 我已准备好接受止损
+
+The checklist does not replace numeric risk checks. The app still blocks plans that exceed the configured max risk per trade.
+
+## Discipline Score
+
+The dashboard shows a 0-100 discipline score. The score starts at 100 and deducts points for issues such as:
+
+- Unreviewed planned trades.
+- Daily loss beyond the configured risk line.
+- Consecutive losses reaching the stop-trading rule.
+- Missing stop-loss on the latest trade.
+- Plans that do not follow the system.
+- Moved stop-loss, impulsive trades, or discipline losses.
 
 ## Run
 
@@ -188,8 +215,9 @@ Default limits:
 - Stop creating new plans after 2 consecutive losses.
 - New plans are blocked when unreviewed trades exist.
 - Spot leverage is fixed to 1x.
-- Futures leverage must be 1 to 10.
+- Futures leverage must be 1 to 5.
 - Stop-loss price is required.
+- Pre-Trade Checklist must be fully checked before saving.
 
 ## Project Structure
 

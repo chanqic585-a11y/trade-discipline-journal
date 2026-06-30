@@ -1,36 +1,36 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { initDatabase } from './src/db/database';
+import { hasAccountSettings } from './src/db/repositories';
 import { DashboardScreen } from './src/screens/DashboardScreen';
-import { HistoryScreen } from './src/screens/HistoryScreen';
-import { MonitorScreen } from './src/screens/MonitorScreen';
+import { InitialSetupScreen } from './src/screens/InitialSetupScreen';
+import { MyScreen } from './src/screens/MyScreen';
 import { ReviewTradeScreen } from './src/screens/ReviewTradeScreen';
-import { RulesScreen } from './src/screens/RulesScreen';
-import { StatisticsScreen } from './src/screens/StatisticsScreen';
 import { TradePlanScreen } from './src/screens/TradePlanScreen';
 import { PriceMonitorProvider } from './src/services/PriceMonitorContext';
 import { colors, spacing } from './src/theme/theme';
 
-type TabKey = 'dashboard' | 'plan' | 'monitor' | 'review' | 'history' | 'stats' | 'rules';
+type TabKey = 'dashboard' | 'plan' | 'review' | 'my';
 
 const tabs: Array<{ key: TabKey; label: string }> = [
-  { key: 'dashboard', label: 'Discipline' },
-  { key: 'plan', label: 'Plan' },
-  { key: 'monitor', label: 'Monitor' },
-  { key: 'review', label: 'Review' },
-  { key: 'history', label: 'History' },
-  { key: 'stats', label: 'Stats' },
-  { key: 'rules', label: 'Rules' },
+  { key: 'dashboard', label: '首页' },
+  { key: 'plan', label: '计划' },
+  { key: 'review', label: '复盘' },
+  { key: 'my', label: '我的' },
 ];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabKey>('dashboard');
   const [refreshKey, setRefreshKey] = useState(0);
   const [ready, setReady] = useState(false);
+  const [setupComplete, setSetupComplete] = useState(false);
 
   useEffect(() => {
     initDatabase()
-      .then(() => setReady(true))
+      .then(async () => {
+        setSetupComplete(await hasAccountSettings());
+        setReady(true);
+      })
       .catch((error: unknown) => {
         Alert.alert('Database error', error instanceof Error ? error.message : 'Unable to open local database.');
       });
@@ -49,13 +49,21 @@ export default function App() {
       );
     }
 
+    if (!setupComplete) {
+      return (
+        <InitialSetupScreen
+          onComplete={() => {
+            setSetupComplete(true);
+            refresh();
+          }}
+        />
+      );
+    }
+
     if (activeTab === 'dashboard') return <DashboardScreen refreshKey={refreshKey} />;
     if (activeTab === 'plan') return <TradePlanScreen onSaved={() => { refresh(); setActiveTab('dashboard'); }} />;
-    if (activeTab === 'monitor') return <MonitorScreen />;
     if (activeTab === 'review') return <ReviewTradeScreen onSaved={() => { refresh(); setActiveTab('dashboard'); }} />;
-    if (activeTab === 'history') return <HistoryScreen refreshKey={refreshKey} />;
-    if (activeTab === 'stats') return <StatisticsScreen refreshKey={refreshKey} />;
-    return <RulesScreen onSaved={refresh} />;
+    return <MyScreen refreshKey={refreshKey} onSaved={refresh} />;
   };
 
   return (
@@ -65,25 +73,27 @@ export default function App() {
         <Text style={styles.title}>Trade Discipline Journal</Text>
         <Text style={styles.subtitle}>Plan first. Review after. No signals.</Text>
       </View>
-      {ready ? (
+      {ready && setupComplete ? (
         <PriceMonitorProvider refreshKey={refreshKey}>
           <View style={styles.body}>{renderScreen()}</View>
         </PriceMonitorProvider>
       ) : (
         <View style={styles.body}>{renderScreen()}</View>
       )}
-      <View style={styles.tabBar}>
-        {tabs.map((tab) => (
-          <TouchableOpacity
-            key={tab.key}
-            accessibilityRole="button"
-            style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-            onPress={() => setActiveTab(tab.key)}
-          >
-            <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>{tab.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      {ready && setupComplete ? (
+        <View style={styles.tabBar}>
+          {tabs.map((tab) => (
+            <TouchableOpacity
+              key={tab.key}
+              accessibilityRole="button"
+              style={[styles.tab, activeTab === tab.key && styles.tabActive]}
+              onPress={() => setActiveTab(tab.key)}
+            >
+              <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>{tab.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }

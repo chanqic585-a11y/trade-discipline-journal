@@ -39,6 +39,18 @@ export function DashboardScreen({ refreshKey }: { refreshKey: number }) {
         ))}
       </View>
 
+      <View style={[styles.scorePanel, summary.disciplineScore < 80 && styles.scorePanelWarn]}>
+        <Text style={styles.scoreLabel}>纪律评分</Text>
+        <Text style={[styles.scoreValue, summary.disciplineScore < 80 && styles.scoreValueWarn]}>
+          {summary.disciplineScore}
+        </Text>
+        <Text style={styles.scoreText}>
+          {summary.disciplineScoreReasons.length === 0
+            ? '今日暂无明显纪律扣分。'
+            : summary.disciplineScoreReasons.join(' / ')}
+        </Text>
+      </View>
+
       <View style={styles.grid}>
         <StatCard label="当前账户余额" value={summary.account.currentBalance.toFixed(2)} />
         <StatCard label="今日盈亏" value={summary.todayPnl.toFixed(2)} danger={summary.todayPnl < 0} />
@@ -102,6 +114,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+  },
+  scorePanel: {
+    borderColor: colors.success,
+    borderRadius: 8,
+    borderWidth: 1,
+    backgroundColor: colors.successSoft,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  scorePanelWarn: {
+    borderColor: colors.warning,
+    backgroundColor: colors.warningSoft,
+  },
+  scoreLabel: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  scoreValue: {
+    color: colors.success,
+    fontSize: 36,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  scoreValueWarn: {
+    color: colors.warning,
+  },
+  scoreText: {
+    color: colors.text,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: spacing.xs,
   },
   note: {
     borderColor: colors.border,

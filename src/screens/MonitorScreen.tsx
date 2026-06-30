@@ -13,6 +13,13 @@ export function MonitorScreen() {
 
   return (
     <Screen>
+      <View style={styles.foregroundWarning}>
+        <Text style={styles.foregroundTitle}>前台提醒限制</Text>
+        <Text style={styles.foregroundText}>
+          当前版本只在 APP 前台运行时提醒。锁屏、后台运行或系统杀掉 APP 后，价格监听可能停止。
+        </Text>
+      </View>
+
       <View style={[styles.statusPanel, status === 'connected' ? styles.statusOk : styles.statusWarn]}>
         <Text style={styles.statusTitle}>OKX 公共行情监听</Text>
         <Text style={styles.statusText}>
@@ -91,6 +98,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: spacing.md,
     marginBottom: spacing.md,
+  },
+  foregroundWarning: {
+    borderColor: colors.danger,
+    borderRadius: 8,
+    borderWidth: 1,
+    backgroundColor: colors.dangerSoft,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  foregroundTitle: {
+    color: colors.danger,
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: spacing.xs,
+  },
+  foregroundText: {
+    color: colors.text,
+    fontSize: 13,
+    lineHeight: 19,
   },
   statusOk: {
     backgroundColor: colors.successSoft,

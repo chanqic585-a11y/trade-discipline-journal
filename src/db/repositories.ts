@@ -25,8 +25,9 @@ type TradeRow = Omit<
   impulsiveTrade: number | null;
 };
 
-type AccountRow = Omit<AccountSettings, 'preTradeCheckEnabled'> & {
+type AccountRow = Omit<AccountSettings, 'preTradeCheckEnabled' | 'setupCompleted'> & {
   preTradeCheckEnabled: number;
+  setupCompleted: number;
 };
 
 function toBoolean(value: number | null): boolean | null {
@@ -50,6 +51,7 @@ function mapAccount(row: AccountRow): AccountSettings {
   return {
     ...row,
     preTradeCheckEnabled: row.preTradeCheckEnabled === 1,
+    setupCompleted: row.setupCompleted === 1,
   };
 }
 
@@ -58,6 +60,26 @@ export async function getAccountSettings(): Promise<AccountSettings> {
   const row = await db.getFirstAsync<AccountRow>('SELECT * FROM AccountSettings WHERE id = 1');
   if (!row) throw new Error('Account settings are missing.');
   return mapAccount(row);
+}
+
+export async function hasAccountSettings(): Promise<boolean> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ count: number }>(
+    'SELECT COUNT(*) as count FROM AccountSettings WHERE id = 1 AND setupCompleted = 1',
+  );
+  return (row?.count ?? 0) > 0;
+}
+
+export async function createInitialAccountSettings(initialBalance: number) {
+  const db = await getDatabase();
+  const now = new Date().toISOString();
+  await db.runAsync(
+    `INSERT OR REPLACE INTO AccountSettings (
+      id, initialBalance, currentBalance, maxRiskPerTradePercent, maxDailyLossPercent,
+      maxConsecutiveLosses, reviewReminderTime, preTradeCheckEnabled, setupCompleted, createdAt, updatedAt
+    ) VALUES (1, ?, ?, 2, 3, 2, '21:00', 1, 1, ?, ?)`,
+    [initialBalance, initialBalance, now, now],
+  );
 }
 
 export async function updateAccountSettings(
@@ -80,6 +102,7 @@ export async function updateAccountSettings(
           maxConsecutiveLosses = ?,
           reviewReminderTime = ?,
           preTradeCheckEnabled = ?,
+          setupCompleted = 1,
           updatedAt = ?
       WHERE id = 1`,
     [

@@ -19,6 +19,7 @@ export interface AccountSettings {
   maxConsecutiveLosses: number;
   reviewReminderTime: string;
   preTradeCheckEnabled: boolean;
+  setupCompleted: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -100,6 +101,8 @@ export interface DashboardSummary {
   todayPnl: number;
   todayTradeCount: number;
   todayConsecutiveLosses: number;
+  disciplineScore: number;
+  disciplineScoreReasons: string[];
   canTradeToday: boolean;
   warnings: string[];
 }

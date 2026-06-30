@@ -37,21 +37,46 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   const todayReviewedTrades = todayTrades.filter((trade) => trade.status === 'reviewed');
   const todayConsecutiveLosses = calculateConsecutiveLosses(todayReviewedTrades);
   const warnings: string[] = [];
+  const disciplineScoreReasons: string[] = [];
+  let disciplineScore = 100;
 
   if (Math.abs(Math.min(todayPnl, 0)) > account.currentBalance * (account.maxDailyLossPercent / 100)) {
     warnings.push('今日不建议继续交易，只允许复盘。');
+    disciplineScore -= 20;
+    disciplineScoreReasons.push('当日亏损超过风控线');
   }
 
   if (todayConsecutiveLosses >= account.maxConsecutiveLosses) {
     warnings.push('连续亏损已达到停止交易规则。');
+    disciplineScore -= 20;
+    disciplineScoreReasons.push('连续亏损达到停止交易规则');
   }
 
   if (unreviewedTrades.length > 0) {
     warnings.push('还有未完成复盘的交易，先复盘再考虑新计划。');
+    disciplineScore -= 20;
+    disciplineScoreReasons.push('存在未完成复盘');
   }
 
   if (latestTrade && (!latestTrade.stopLossPrice || latestTrade.stopLossPrice <= 0)) {
     warnings.push('最近一笔交易没有有效止损。');
+    disciplineScore -= 20;
+    disciplineScoreReasons.push('最近交易缺少有效止损');
+  }
+
+  if (todayTrades.some((trade) => !trade.isFollowingSystem)) {
+    disciplineScore -= 15;
+    disciplineScoreReasons.push('今日存在不符合系统的计划');
+  }
+
+  if (todayReviewedTrades.some((trade) => trade.movedStopLoss)) {
+    disciplineScore -= 15;
+    disciplineScoreReasons.push('今日存在移动止损');
+  }
+
+  if (todayReviewedTrades.some((trade) => trade.impulsiveTrade || trade.lossType === 'discipline_loss')) {
+    disciplineScore -= 15;
+    disciplineScoreReasons.push('今日存在纪律亏损或冲动交易');
   }
 
   if (warnings.length > 0) {
@@ -63,6 +88,8 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
     todayPnl,
     todayTradeCount: todayTrades.length,
     todayConsecutiveLosses,
+    disciplineScore: Math.max(0, Math.min(100, disciplineScore)),
+    disciplineScoreReasons,
     canTradeToday: warnings.length === 0,
     warnings,
   };

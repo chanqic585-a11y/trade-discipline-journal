@@ -23,6 +23,7 @@ export async function initDatabase() {
       maxConsecutiveLosses INTEGER NOT NULL,
       reviewReminderTime TEXT NOT NULL,
       preTradeCheckEnabled INTEGER NOT NULL DEFAULT 1,
+      setupCompleted INTEGER NOT NULL DEFAULT 0,
       createdAt TEXT NOT NULL,
       updatedAt TEXT NOT NULL
     );
@@ -76,15 +77,10 @@ export async function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_alert_logs_createdAt ON AlertLogs(createdAt);
   `);
 
-  const existing = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM AccountSettings');
-  if (!existing || existing.count === 0) {
-    const now = new Date().toISOString();
-    await db.runAsync(
-      `INSERT INTO AccountSettings (
-        id, initialBalance, currentBalance, maxRiskPerTradePercent, maxDailyLossPercent,
-        maxConsecutiveLosses, reviewReminderTime, preTradeCheckEnabled, createdAt, updatedAt
-      ) VALUES (1, 10000, 10000, 2, 3, 2, '21:00', 1, ?, ?)`,
-      [now, now],
-    );
+  const accountColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(AccountSettings)');
+  if (!accountColumns.some((column) => column.name === 'setupCompleted')) {
+    await db.execAsync('ALTER TABLE AccountSettings ADD COLUMN setupCompleted INTEGER NOT NULL DEFAULT 0;');
   }
+
+  await db.execAsync('PRAGMA user_version = 1;');
 }
