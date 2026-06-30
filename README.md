@@ -1,12 +1,20 @@
 # Trade Discipline Journal
 
-React Native + Expo MVP for crypto trade planning, review, discipline rules, and local statistics.
+React Native + Expo app for crypto trade planning, review, discipline rules, and local statistics.
+
+V2 principle:
+
+```text
+交易员最大的敌人不是市场，而是自己。
+```
+
+The app is organized around discipline, emotion, risk, and execution. It is intentionally calm: no chart-first home screen, no signal language, and no exchange-style visual treatment.
 
 This app is not investment advice. It only connects to OKX public market data for alerts, does not use trading permissions, does not provide buy/sell signals, and does not place orders.
 
 ## Features
 
-- Dashboard with discipline-first status.
+- Apple Health-inspired dashboard focused on discipline score, risk, emotion, execution, and permission to trade.
 - Initial Setup for local starting capital. Suggested default: 15000.
 - Dashboard with discipline score.
 - Trade Plan form with stop-loss, leverage, emotion, Pre-Trade Checklist, and risk checks.
@@ -17,6 +25,21 @@ This app is not investment advice. It only connects to OKX public market data fo
 - OKX public market monitor for planned trades while the app is open in the foreground.
 - Four bottom tabs: 首页, 计划, 复盘, 我的. Monitor, Statistics, Rules, and History live under 我的.
 - SQLite local storage. No login and no cloud sync.
+
+## V2 Home Screen
+
+The home screen is designed to make the trader calm before acting. It does not show candlesticks, live quotes, or profit-first cards.
+
+Primary home metrics:
+
+- 今日纪律评分
+- 是否允许交易
+- 今日风险
+- 连续亏损
+- 交易系统符合率
+- 情绪
+- 今日计划
+- 今日提醒
 
 ## OKX Price Alerts
 

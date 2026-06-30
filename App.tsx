@@ -71,7 +71,7 @@ export default function App() {
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <View style={styles.header}>
         <Text style={styles.title}>Trade Discipline Journal</Text>
-        <Text style={styles.subtitle}>Plan first. Review after. No signals.</Text>
+        <Text style={styles.subtitle}>Discipline. Emotion. Risk. Execution.</Text>
       </View>
       {ready && setupComplete ? (
         <PriceMonitorProvider refreshKey={refreshKey}>

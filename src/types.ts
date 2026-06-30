@@ -102,7 +102,13 @@ export interface DashboardSummary {
   todayTradeCount: number;
   todayConsecutiveLosses: number;
   disciplineScore: number;
+  disciplineLevel: string;
   disciplineScoreReasons: string[];
+  todayRiskPercent: number;
+  systemComplianceRate: number;
+  currentEmotion: EmotionBefore | null;
+  todayPlanLimit: number;
+  dailyReminder: string;
   canTradeToday: boolean;
   warnings: string[];
 }
