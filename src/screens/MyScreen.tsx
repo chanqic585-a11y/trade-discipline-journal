@@ -4,12 +4,13 @@ import { Screen } from '../components/Screen';
 import { DataQualityScreen } from './DataQualityScreen';
 import { HistoryScreen } from './HistoryScreen';
 import { MonitorScreen } from './MonitorScreen';
+import { ResearchDashboardScreen } from './ResearchDashboardScreen';
 import { RulesScreen } from './RulesScreen';
 import { SkillEngineScreen } from './SkillEngineScreen';
 import { StatisticsScreen } from './StatisticsScreen';
 import { colors, spacing } from '../theme/theme';
 
-type MyView = 'menu' | 'monitor' | 'stats' | 'rules' | 'history' | 'dataQuality' | 'skills';
+type MyView = 'menu' | 'monitor' | 'stats' | 'rules' | 'history' | 'dataQuality' | 'skills' | 'research';
 
 interface MyScreenProps {
   refreshKey: number;
@@ -47,6 +48,11 @@ const entries: Array<{ key: MyView; title: string; description: string }> = [
     title: 'Skill Engine',
     description: '运行可复用研究技能，分析入场质量、风险纪律、市场状态和复盘行为。',
   },
+  {
+    key: 'research',
+    title: 'Research Dashboard',
+    description: '聚合交易、Feature 和 Skill Results，查看历史研究模式与数据质量。',
+  },
 ];
 
 export function MyScreen({ refreshKey, onSaved }: MyScreenProps) {
@@ -58,11 +64,12 @@ export function MyScreen({ refreshKey, onSaved }: MyScreenProps) {
   if (view === 'history') return <NestedView title="交易记录" onBack={() => setView('menu')}><HistoryScreen refreshKey={refreshKey} /></NestedView>;
   if (view === 'dataQuality') return <NestedView title="Feature Database" onBack={() => setView('menu')}><DataQualityScreen refreshKey={refreshKey} /></NestedView>;
   if (view === 'skills') return <NestedView title="Skill Engine" onBack={() => setView('menu')}><SkillEngineScreen refreshKey={refreshKey} /></NestedView>;
+  if (view === 'research') return <NestedView title="Research Dashboard" onBack={() => setView('menu')}><ResearchDashboardScreen refreshKey={refreshKey} /></NestedView>;
 
   return (
     <Screen>
       <Text style={styles.heading}>我的</Text>
-      <Text style={styles.subtitle}>管理提醒、统计、规则、交易记录、Feature Database 和 Skill Engine。</Text>
+      <Text style={styles.subtitle}>管理提醒、统计、规则、交易记录、Feature Database、Skill Engine 和 Research Dashboard。</Text>
       {entries.map((entry) => (
         <TouchableOpacity key={entry.key} style={styles.card} onPress={() => setView(entry.key)}>
           <Text style={styles.cardTitle}>{entry.title}</Text>

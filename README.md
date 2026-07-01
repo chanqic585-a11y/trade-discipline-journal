@@ -1,6 +1,6 @@
 # Trade Discipline Journal
 
-React Native + Expo app for crypto trade planning, review, discipline rules, local statistics, the V2 AI Trading Copilot foundation, the V3 Feature Database, the V4 Backend + CCXT Market Service, the V5 Python Feature Engine, and the V6 Skill Engine.
+React Native + Expo app for crypto trade planning, review, discipline rules, local statistics, the V2 AI Trading Copilot foundation, the V3 Feature Database, the V4 Backend + CCXT Market Service, the V5 Python Feature Engine, the V6 Skill Engine, and the V7 Research Dashboard.
 
 This app is not investment advice. It only connects to public market data for alerts and research context, does not use trading permissions, does not provide buy/sell signals, and does not place orders.
 
@@ -145,6 +145,34 @@ Implemented in this version:
 
 V6.1 does not change the five built-in Skills. It does not add AI, signals, exchange trading permissions, automatic order placement, or trading advice.
 
+## V7 Research Dashboard
+
+V7 adds a local Research Dashboard. It aggregates saved `Trades`, `TradeFeatures`, and `SkillResults` into a calm research view for historical behavior, feature quality, skill observations, discipline patterns, setup patterns, and market-context distributions.
+
+Implemented in this version:
+
+- `src/research/researchTypes.ts` for dashboard data contracts.
+- `src/research/researchRepository.ts` for local read-only data loading.
+- `src/research/researchFilters.ts` for time, symbol, setup, and result filters.
+- `src/research/researchMetrics.ts` for overview, data quality, skill, discipline, setup, and market-context aggregation.
+- `src/research/researchSummary.ts` for research-oriented summary notes.
+- `src/screens/ResearchDashboardScreen.tsx` under `我的 -> Research Dashboard`.
+- Latest Skill run and all-time Skill summary are clearly separated.
+
+V7 safety boundaries:
+
+- Reads local SQLite only by default.
+- Does not require the V4/V5 backend to run.
+- No real AI integration.
+- No signal engine.
+- No buy/sell advice.
+- No Trade API.
+- No Withdraw API.
+- No API Key storage.
+- No automatic trading.
+- No order placement or cancellation.
+- Research output is historical observation only and is not a trading command.
+
 ## V2 AI Trading Copilot Foundation
 
 V2 moves the app from a pure trading journal toward an AI Trading Copilot foundation while keeping the V1.1 safety boundaries.
@@ -226,6 +254,7 @@ The Data Quality page can export all local `TradeFeatures` rows as CSV through t
 - Optional V5 Python Feature Engine for public-market feature enrichment.
 - Local V6 Skill Engine for reusable research observations.
 - V6.1 grouped Skill runs with latest-run result focus.
+- Local V7 Research Dashboard for historical research aggregation.
 - Four bottom tabs: 首页, 计划, 复盘, 我的. Monitor, Statistics, Rules, and History live under 我的.
 - SQLite local storage. No login and no cloud sync.
 
@@ -461,6 +490,7 @@ src/
   constants.ts     Labels and enum options
   db/              SQLite initialization and CRUD
   feature-engine/  Local Feature Database generation and CSV export
+  research/        Local read-only Research Dashboard aggregation
   screens/         MVP screens
   services/        Risk, statistics, date, notification, OKX monitor, V2 Copilot data flow
   skill-engine/    Local research Skill Engine and built-in Skills
