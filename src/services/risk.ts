@@ -75,7 +75,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
 
   const todayPnl = todayTrades.reduce((sum, trade) => sum + (trade.pnl ?? 0), 0);
   const todayReviewedTrades = todayTrades.filter((trade) => trade.status === 'reviewed');
-  const openTrades = todayTrades.filter((trade) => trade.status !== 'reviewed');
+  const openTrades = todayTrades.filter((trade) => ['planned', 'open', 'watching'].includes(trade.status));
   const todayRiskAmount = openTrades.reduce(
     (sum, trade) => sum + calculateMaxLoss(trade.entryPrice, trade.stopLossPrice, trade.positionSize, trade.leverage),
     0,

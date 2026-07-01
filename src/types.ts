@@ -6,7 +6,7 @@ export type SetupType =
   | 'extreme_fear_rebound'
   | 'other';
 export type EmotionBefore = 'calm' | 'anxious' | 'greedy' | 'revenge' | 'fomo';
-export type TradeStatus = 'planned' | 'open' | 'reviewed';
+export type TradeStatus = 'planned' | 'open' | 'watching' | 'closed' | 'reviewed';
 export type LossType = 'strategy_loss' | 'discipline_loss' | 'no_loss';
 export type AlertType = 'stop_loss' | 'take_profit';
 export type SnapshotType = 'entry' | 'update' | 'close';

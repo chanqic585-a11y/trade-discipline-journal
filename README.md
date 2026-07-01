@@ -15,6 +15,7 @@ Implemented in this version:
 - Local `TradeAnalysis`, `TradeSnapshots`, and `TradeTimeline` tables.
 - Service-layer flow for Quick Trade, mock analysis, snapshots, and lifecycle events.
 - Dashboard Copilot cards for Open Trades, Today's Risk, AI Watch, Recent Timeline, Closest Stop Loss, and Closest Take Profit.
+- Trade lifecycle status supports `planned`, `open`, `watching`, `closed`, and `reviewed`.
 
 Important boundaries:
 

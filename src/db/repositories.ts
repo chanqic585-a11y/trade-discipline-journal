@@ -229,7 +229,9 @@ export async function listTrades(): Promise<Trade[]> {
 export async function listUnreviewedTrades(): Promise<Trade[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<TradeRow>(
-    `SELECT * FROM Trades WHERE status IN ('planned', 'open') ORDER BY createdAt ASC`,
+    `SELECT * FROM Trades
+      WHERE status IN ('planned', 'open', 'watching', 'closed')
+      ORDER BY createdAt ASC`,
   );
   return rows.map(mapTrade);
 }
@@ -237,7 +239,19 @@ export async function listUnreviewedTrades(): Promise<Trade[]> {
 export async function listOpenTrades(): Promise<Trade[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<TradeRow>(
-    `SELECT * FROM Trades WHERE status IN ('planned', 'open') ORDER BY createdAt DESC`,
+    `SELECT * FROM Trades
+      WHERE status IN ('planned', 'open', 'watching')
+      ORDER BY createdAt DESC`,
+  );
+  return rows.map(mapTrade);
+}
+
+export async function listMonitorableTrades(): Promise<Trade[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<TradeRow>(
+    `SELECT * FROM Trades
+      WHERE status IN ('planned', 'open', 'watching')
+      ORDER BY createdAt ASC`,
   );
   return rows.map(mapTrade);
 }

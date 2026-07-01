@@ -1,6 +1,6 @@
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert } from 'react-native';
-import { createAlertLog, hasAlertLog, listAlertLogs, listUnreviewedTrades } from '../db/repositories';
+import { createAlertLog, hasAlertLog, listAlertLogs, listMonitorableTrades } from '../db/repositories';
 import { sendPriceAlertNotification } from './notifications';
 import { evaluatePriceTrigger, toOkxInstrumentId } from './priceAlerts';
 import { AlertLog, Trade } from '../types';
@@ -44,7 +44,7 @@ export function PriceMonitorProvider({ refreshKey, children }: { refreshKey: num
   const triggeredKeysRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    Promise.all([listUnreviewedTrades(), listAlertLogs()])
+    Promise.all([listMonitorableTrades(), listAlertLogs()])
       .then(([nextTrades, nextLogs]) => {
         setTrades(nextTrades);
         setLogs(nextLogs);

@@ -31,6 +31,8 @@ function formatNumber(value: number | null, digits = 2) {
 
 function statusLabel(status: Trade['status']) {
   if (status === 'reviewed') return 'Reviewed';
+  if (status === 'closed') return 'Closed';
+  if (status === 'watching') return 'Watching';
   if (status === 'open') return 'Open';
   return 'Planned';
 }
@@ -152,7 +154,9 @@ export function TradeDetailScreen({ tradeId }: { tradeId: number }) {
         <Text style={styles.bodyText}>
           {trade.status === 'reviewed'
             ? 'Review has been completed for this trade.'
-            : 'This trade is still open for review. Use the Review tab when the trade is closed.'}
+            : trade.status === 'closed'
+              ? 'This trade is closed and waiting for review. Use the Review tab to complete the lifecycle.'
+              : 'This trade is still open for review. Use the Review tab when the trade is closed.'}
         </Text>
       </Section>
     </Screen>
