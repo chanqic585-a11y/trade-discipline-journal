@@ -1,4 +1,4 @@
-import { getAccountSettings, getLatestTrade, listTrades, listTradesBetween, listUnreviewedTrades } from '../db/repositories';
+import { getAccountSettings, getLatestTrade, listTradesBetween, listUnreviewedTrades } from '../db/repositories';
 import { DashboardSummary, Trade } from '../types';
 import { todayRange } from './date';
 
@@ -29,7 +29,6 @@ export function calculateConsecutiveLosses(trades: Trade[]) {
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   const account = await getAccountSettings();
   const { startIso, endIso } = todayRange();
-  const allTrades = await listTrades();
   const todayTrades = await listTradesBetween(startIso, endIso);
   const unreviewedTrades = await listUnreviewedTrades();
   const latestTrade = await getLatestTrade();
@@ -40,18 +39,6 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   const warnings: string[] = [];
   const disciplineScoreReasons: string[] = [];
   let disciplineScore = 100;
-  const todayRisk = todayTrades.reduce((sum, trade) => {
-    return sum + calculateMaxLoss(trade.entryPrice, trade.stopLossPrice, trade.positionSize, trade.leverage);
-  }, 0);
-  const todayRiskPercent = account.currentBalance > 0 ? (todayRisk / account.currentBalance) * 100 : 0;
-  const systemBase = allTrades.length > 0 ? allTrades : todayTrades;
-  const systemComplianceRate =
-    systemBase.length === 0
-      ? 100
-      : (systemBase.filter((trade) => trade.isFollowingSystem).length / systemBase.length) * 100;
-  const latestTodayTrade = todayTrades[todayTrades.length - 1] ?? null;
-  const currentEmotion = latestTodayTrade ? latestTodayTrade.emotionBefore : null;
-  const todayPlanLimit = 3;
 
   if (Math.abs(Math.min(todayPnl, 0)) > account.currentBalance * (account.maxDailyLossPercent / 100)) {
     warnings.push('今日不建议继续交易，只允许复盘。');
@@ -96,58 +83,16 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
     warnings.push('你现在想交易，可能不是因为机会，而是因为想回本。');
   }
 
-  const boundedScore = Math.max(0, Math.min(100, disciplineScore));
-
   return {
     account,
     todayPnl,
     todayTradeCount: todayTrades.length,
     todayConsecutiveLosses,
-    disciplineScore: boundedScore,
-    disciplineLevel: getDisciplineLevel(boundedScore),
+    disciplineScore: Math.max(0, Math.min(100, disciplineScore)),
     disciplineScoreReasons,
-    todayRiskPercent,
-    systemComplianceRate,
-    currentEmotion,
-    todayPlanLimit,
-    dailyReminder: getDailyReminder({
-      canTradeToday: warnings.length === 0,
-      currentEmotion,
-      todayConsecutiveLosses,
-      todayRiskPercent,
-      todayTradeCount: todayTrades.length,
-      todayPlanLimit,
-      unreviewedCount: unreviewedTrades.length,
-    }),
     canTradeToday: warnings.length === 0,
     warnings,
   };
-}
-
-function getDisciplineLevel(score: number) {
-  if (score >= 90) return '优秀';
-  if (score >= 75) return '稳定';
-  if (score >= 60) return '谨慎';
-  return '停止';
-}
-
-function getDailyReminder(input: {
-  canTradeToday: boolean;
-  currentEmotion: Trade['emotionBefore'] | null;
-  todayConsecutiveLosses: number;
-  todayRiskPercent: number;
-  todayTradeCount: number;
-  todayPlanLimit: number;
-  unreviewedCount: number;
-}) {
-  if (!input.canTradeToday) return '今天只允许复盘，不要开新计划。';
-  if (input.unreviewedCount > 0) return '先完成复盘，再考虑新的交易。';
-  if (input.currentEmotion === 'revenge') return '今天不要为了回本开单。';
-  if (input.currentEmotion === 'fomo') return '今天不要追高。';
-  if (input.todayConsecutiveLosses > 0) return '亏损后先降频，避免连续犯错。';
-  if (input.todayRiskPercent >= 2) return '今日风险已经接近上限，降低仓位。';
-  if (input.todayTradeCount >= input.todayPlanLimit) return '今日计划已满，剩下时间只复盘。';
-  return '今天不要追高。';
 }
 
 export async function canCreateNewTrade() {
