@@ -27,7 +27,9 @@ export function MonitorScreen() {
             ? '当前没有未复盘交易计划。创建计划后，APP 前台运行时会自动监听对应价格。'
             : `状态：${statusLabel(status)} · 监听 ${instrumentCount} 个交易对`}
         </Text>
-        <Text style={styles.safetyText}>仅使用 OKX 公共行情 WebSocket；不保存 API Key，不下单，不给买卖建议。</Text>
+        <Text style={styles.safetyText}>
+          优先尝试 V4 后端公共行情；后端不可用时保留 OKX 前台 WebSocket。仅使用公共行情；不保存 API Key，不下单，不给买卖建议。
+        </Text>
       </View>
 
       {trades.length === 0 ? (

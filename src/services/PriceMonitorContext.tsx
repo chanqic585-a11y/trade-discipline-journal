@@ -1,6 +1,7 @@
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 import { createAlertLog, hasAlertLog, listAlertLogs, listMonitorableTrades } from '../db/repositories';
+import { fetchBackendTicker } from './marketDataService';
 import { sendPriceAlertNotification } from './notifications';
 import { evaluatePriceTrigger, toOkxInstrumentId } from './priceAlerts';
 import { AlertLog, Trade } from '../types';
@@ -95,6 +96,44 @@ export function PriceMonitorProvider({ refreshKey, children }: { refreshKey: num
     },
     [recordTrigger, trades],
   );
+
+  useEffect(() => {
+    if (trades.length === 0) return;
+
+    let isMounted = true;
+
+    Promise.all(
+      trades.map(async (trade) => {
+        const ticker = await fetchBackendTicker(trade.symbol, trade.marketType);
+        if (!ticker?.price) return null;
+
+        return {
+          currentPrice: ticker.price,
+          instrumentId: toOkxInstrumentId(trade.symbol, trade.marketType),
+          trade,
+        };
+      }),
+    )
+      .then((results) => {
+        if (!isMounted) return;
+
+        const backendPrices: Record<string, number> = {};
+        results.forEach((result) => {
+          if (!result) return;
+          backendPrices[result.instrumentId] = result.currentPrice;
+          recordTrigger(result.trade, result.currentPrice).catch(console.error);
+        });
+
+        if (Object.keys(backendPrices).length > 0) {
+          setPrices((current) => ({ ...current, ...backendPrices }));
+        }
+      })
+      .catch(console.error);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [recordTrigger, trades]);
 
   useEffect(() => {
     manuallyClosedRef.current = false;

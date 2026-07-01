@@ -1,8 +1,60 @@
 # Trade Discipline Journal
 
-React Native + Expo app for crypto trade planning, review, discipline rules, local statistics, the V2 AI Trading Copilot foundation, and the V3 Feature Database.
+React Native + Expo app for crypto trade planning, review, discipline rules, local statistics, the V2 AI Trading Copilot foundation, the V3 Feature Database, and the V4 Backend + CCXT Market Service.
 
-This app is not investment advice. It only connects to OKX public market data for alerts, does not use trading permissions, does not provide buy/sell signals, and does not place orders.
+This app is not investment advice. It only connects to public market data for alerts and research context, does not use trading permissions, does not provide buy/sell signals, and does not place orders.
+
+## V4 Backend + CCXT Market Service
+
+V4 adds a Python FastAPI backend that reads OKX public market data through CCXT. The backend is optional at runtime: the app tries the backend first, then keeps the existing local, mock, and OKX foreground WebSocket fallback behavior when the backend is unavailable.
+
+Implemented in this version:
+
+- `api/` FastAPI service.
+- CCXT public OKX market adapter.
+- `GET /health`.
+- `GET /market/ticker?exchange=okx&symbol=BTC/USDT`.
+- `GET /market/ohlcv?exchange=okx&symbol=BTC/USDT&timeframe=1m&limit=200`.
+- `GET /market/features?exchange=okx&symbol=BTC/USDT`.
+- App-side backend market client with timeout and safe fallback.
+- Quick Trade entry snapshots can use V4 backend public ticker price when available.
+- Monitor can preload backend public ticker prices before OKX foreground WebSocket updates.
+
+V4 safety boundaries:
+
+- Public market data only.
+- No Trade API.
+- No Withdraw API.
+- No API Key storage.
+- No automatic trading.
+- No order placement.
+- No buy/sell advice.
+- No future price prediction.
+
+### Run the V4 backend
+
+Create and activate a local Python environment, then install the backend dependencies:
+
+```powershell
+cd D:\Codex-Workspace\trade-discipline-journal
+python -m venv api\.venv
+api\.venv\Scripts\python.exe -m pip install -r api\requirements.txt
+```
+
+Start the backend:
+
+```powershell
+api\.venv\Scripts\python.exe -m uvicorn api.main:app --host 127.0.0.1 --port 8000
+```
+
+Check the backend:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/health
+Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:8000/market/ticker?exchange=okx&symbol=BTC%2FUSDT"
+```
+
+For Expo Go on a physical Android phone, the app tries to infer your computer's Metro host and call the same host on port `8000`. Keep the phone and computer on the same network. If the backend is unreachable, the app remains usable and falls back to local data, mock analysis, and OKX foreground WebSocket monitoring.
 
 ## V2 AI Trading Copilot Foundation
 
@@ -81,6 +133,7 @@ The Data Quality page can export all local `TradeFeatures` rows as CSV through t
 - Statistics: win rate, total PnL, average win/loss, profit-loss ratio, max consecutive losses, discipline execution, setup extremes.
 - Rules & Reminders for local risk settings and local review notification.
 - OKX public market monitor for planned trades while the app is open in the foreground.
+- Optional V4 FastAPI backend for OKX public ticker, OHLCV, and market features.
 - Four bottom tabs: 首页, 计划, 复盘, 我的. Monitor, Statistics, Rules, and History live under 我的.
 - SQLite local storage. No login and no cloud sync.
 
@@ -102,11 +155,11 @@ Quick Trade does not require long notes, manual setup labels, emotion fields, or
 
 ## OKX Price Alerts
 
-The Monitor tab listens to OKX public WebSocket market data for unreviewed planned trades while the app is open in the foreground.
+The Monitor tab tries the V4 backend public ticker first, then listens to OKX public WebSocket market data for unreviewed planned trades while the app is open in the foreground.
 
 Safety boundaries:
 
-- Uses only OKX public market WebSocket: `wss://ws.okx.com:8443/ws/v5/public`.
+- Uses only public market data from the V4 backend and OKX public WebSocket: `wss://ws.okx.com:8443/ws/v5/public`.
 - Does not ask for, store, or use Trade API keys.
 - Does not ask for, store, or use Withdraw API keys.
 - Does not place orders or connect to trading permissions.
@@ -306,6 +359,10 @@ Default limits:
 
 ```text
 App.tsx
+api/
+  main.py          FastAPI public market API
+  market_service.py
+  requirements.txt
 src/
   components/      Shared form and layout components
   constants.ts     Labels and enum options

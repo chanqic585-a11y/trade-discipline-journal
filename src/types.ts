@@ -173,6 +173,55 @@ export interface DataQualitySummary {
   latestGeneratedAt: string | null;
 }
 
+export interface MarketTicker {
+  exchange: string;
+  symbol: string;
+  price: number | null;
+  bid: number | null;
+  ask: number | null;
+  high24h: number | null;
+  low24h: number | null;
+  volume: number | null;
+  quoteVolume: number | null;
+  priceChange24h: number | null;
+  timestamp: number | null;
+  datetime: string | null;
+  source: 'ccxt_public';
+}
+
+export interface MarketOhlcvCandle {
+  timestamp: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export interface MarketOhlcv {
+  exchange: string;
+  symbol: string;
+  timeframe: string;
+  limit: number;
+  candles: MarketOhlcvCandle[];
+  source: 'ccxt_public';
+}
+
+export interface MarketFeatures {
+  exchange: string;
+  symbol: string;
+  price: number | null;
+  volume: number | null;
+  priceChange1h: number | null;
+  priceChange4h: number | null;
+  priceChange24h: number | null;
+  high24h: number | null;
+  low24h: number | null;
+  volatility: number | null;
+  trendDirection: 'up' | 'down' | 'flat' | 'unknown';
+  source: 'ccxt_public';
+}
+
 export interface CreateTradeInput {
   symbol: string;
   marketType: MarketType;

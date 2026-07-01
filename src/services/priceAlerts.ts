@@ -75,7 +75,12 @@ export function calculatePriceDistance(trade: Trade, currentPrice: number): Pric
 
 export function toOkxInstrumentId(symbol: string, marketType: Trade['marketType']) {
   const normalized = symbol.trim().toUpperCase();
-  if (normalized.includes('-')) return normalized;
-  if (marketType === 'futures') return `${normalized}-USDT-SWAP`;
-  return `${normalized}-USDT`;
+  if (normalized.endsWith('-USDT-SWAP')) return normalized;
+
+  const parts = normalized.replace(':', '/').replace(/-/g, '/').split('/').filter(Boolean);
+  const base = parts[0];
+  const quote = parts[1] ?? 'USDT';
+
+  if (marketType === 'futures') return `${base}-${quote}-SWAP`;
+  return `${base}-${quote}`;
 }

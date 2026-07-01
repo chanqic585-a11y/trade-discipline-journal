@@ -2,6 +2,7 @@ import { createTrade, getTradeById } from '../db/repositories';
 import { generateTradeFeature } from '../feature-engine/featureEngine';
 import { CreateQuickTradeInput, MarketType } from '../types';
 import { generateAndSaveMockAnalysis } from './analysisService';
+import { fetchBackendTicker } from './marketDataService';
 import { calculateTradeRiskMetrics } from './risk';
 import { createEntrySnapshot } from './snapshotService';
 import { createTimelineEvent } from './timelineService';
@@ -26,10 +27,13 @@ export async function createQuickTrade(input: CreateQuickTradeInput): Promise<nu
     throw new Error('Take profit must be empty or a valid price.');
   }
 
+  const marketType = inferMarketType(input);
+  const backendTicker = await fetchBackendTicker(symbol, marketType);
+
   const tradeId = await createTrade(
     {
       symbol,
-      marketType: inferMarketType(input),
+      marketType,
       leverage: input.leverage,
       direction: input.direction,
       entryPrice: input.entryPrice,
@@ -48,7 +52,7 @@ export async function createQuickTrade(input: CreateQuickTradeInput): Promise<nu
   const trade = await getTradeById(tradeId);
   if (!trade) throw new Error('Quick Trade was saved, but the trade could not be loaded.');
 
-  await createEntrySnapshot(trade);
+  await createEntrySnapshot(trade, backendTicker?.price ?? trade.entryPrice);
   await generateAndSaveMockAnalysis(trade);
 
   await createTimelineEvent({
@@ -62,8 +66,13 @@ export async function createQuickTrade(input: CreateQuickTradeInput): Promise<nu
     tradeId,
     eventType: 'snapshot_saved',
     title: 'Snapshot Saved',
-    description: 'Entry snapshot was saved for future feature engine analysis.',
-    metadata: { snapshotType: 'entry' },
+    description: backendTicker
+      ? 'Entry snapshot was saved with V4 backend public market price.'
+      : 'Entry snapshot was saved with entry price because the V4 backend was unavailable.',
+    metadata: {
+      snapshotType: 'entry',
+      marketDataSource: backendTicker ? 'v4_backend_ccxt_public' : 'local_entry_price_fallback',
+    },
   });
   await createTimelineEvent({
     tradeId,
