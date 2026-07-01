@@ -78,6 +78,9 @@ export async function initDatabase() {
   `);
 
   const accountColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(AccountSettings)');
+  if (!accountColumns.some((column) => column.name === 'preTradeCheckEnabled')) {
+    await db.execAsync('ALTER TABLE AccountSettings ADD COLUMN preTradeCheckEnabled INTEGER NOT NULL DEFAULT 1;');
+  }
   if (!accountColumns.some((column) => column.name === 'setupCompleted')) {
     await db.execAsync('ALTER TABLE AccountSettings ADD COLUMN setupCompleted INTEGER NOT NULL DEFAULT 0;');
   }
