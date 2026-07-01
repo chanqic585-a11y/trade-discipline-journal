@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from typing import Any
 
 import ccxt
@@ -65,72 +64,26 @@ def _safe_limit(limit: int) -> int:
     return min(limit, 500)
 
 
-def _okx_timeframe(timeframe: str) -> str:
-    normalized = timeframe.strip()
-    mapping = {
-        "1m": "1m",
-        "3m": "3m",
-        "5m": "5m",
-        "15m": "15m",
-        "30m": "30m",
-        "1h": "1H",
-        "2h": "2H",
-        "4h": "4H",
-        "6h": "6H",
-        "12h": "12H",
-        "1d": "1D",
-        "1w": "1W",
-        "1M": "1M",
-    }
-    return mapping.get(normalized, normalized)
-
-
-def _timestamp_to_datetime(timestamp: int | None) -> str | None:
-    if timestamp is None:
-        return None
-    return datetime.fromtimestamp(timestamp / 1000, timezone.utc).isoformat()
-
-
-def _to_okx_inst_id(symbol: str) -> str:
+def _to_ccxt_symbol(symbol: str) -> str:
     normalized = symbol.strip().upper()
     if not normalized:
         raise MarketServiceError("symbol is required.")
 
-    clean = normalized.replace(":", "/").replace("-", "/")
+    if "/" in normalized and ":" in normalized:
+        return normalized
+
+    clean = normalized.replace("-", "/")
     parts = [part for part in clean.split("/") if part and part != "SWAP"]
     base = parts[0]
     quote = parts[1] if len(parts) >= 2 else "USDT"
 
-    if normalized.endswith("-USDT-SWAP") or normalized.endswith("/USDT:USDT"):
-        return f"{base}-{quote}-SWAP"
+    if normalized.endswith("-USDT-SWAP"):
+        return f"{base}/{quote}:{quote}"
 
-    return f"{base}-{quote}"
-
-
-def _display_symbol(symbol: str, inst_id: str) -> str:
-    normalized = symbol.strip().upper()
     if "/" in normalized:
-        return normalized
+        return f"{base}/{quote}"
 
-    if inst_id.endswith("-SWAP"):
-        base, quote, _ = inst_id.split("-", 2)
-        return f"{base}/{quote}:USDT"
-
-    return inst_id.replace("-", "/")
-
-
-def _first_data_row(response: Any, label: str) -> dict[str, Any]:
-    data = response.get("data") if isinstance(response, dict) else None
-    if not isinstance(data, list) or not data or not isinstance(data[0], dict):
-        raise MarketServiceError(f"OKX returned an invalid {label} response.", 502)
-    return data[0]
-
-
-def _data_rows(response: Any, label: str) -> list[list[Any]]:
-    data = response.get("data") if isinstance(response, dict) else None
-    if not isinstance(data, list):
-        raise MarketServiceError(f"OKX returned an invalid {label} response.", 502)
-    return [row for row in data if isinstance(row, list)]
+    return f"{base}/{quote}"
 
 
 def _parse_ohlcv(row: list[Any]) -> OhlcvCandle:
@@ -181,31 +134,26 @@ class MarketService:
 
     def fetch_ticker(self, exchange_id: str, symbol: str) -> dict[str, Any]:
         normalized_exchange = self._normalize_exchange(exchange_id)
-        inst_id = _to_okx_inst_id(symbol)
+        ccxt_symbol = _to_ccxt_symbol(symbol)
         try:
             exchange = self._exchange(normalized_exchange)
-            response = exchange.public_get_market_ticker({"instId": inst_id})
+            ticker = exchange.fetch_ticker(ccxt_symbol)
         except Exception as error:
             raise MarketServiceError(str(error), 502) from error
 
-        ticker = _first_data_row(response, "ticker")
-        price = _number(ticker.get("last"))
-        open_24h = _number(ticker.get("open24h")) or _number(ticker.get("sodUtc8"))
-        timestamp = int(ticker["ts"]) if str(ticker.get("ts", "")).isdigit() else None
-
         return {
             "exchange": normalized_exchange,
-            "symbol": _display_symbol(symbol, inst_id),
-            "price": price,
-            "bid": _number(ticker.get("bidPx")),
-            "ask": _number(ticker.get("askPx")),
-            "high24h": _number(ticker.get("high24h")),
-            "low24h": _number(ticker.get("low24h")),
-            "volume": _number(ticker.get("vol24h")),
-            "quoteVolume": _number(ticker.get("volCcy24h")),
-            "priceChange24h": _percentage_change(price, open_24h),
-            "timestamp": timestamp,
-            "datetime": _timestamp_to_datetime(timestamp),
+            "symbol": ticker.get("symbol") or ccxt_symbol,
+            "price": _number(ticker.get("last")),
+            "bid": _number(ticker.get("bid")),
+            "ask": _number(ticker.get("ask")),
+            "high24h": _number(ticker.get("high")),
+            "low24h": _number(ticker.get("low")),
+            "volume": _number(ticker.get("baseVolume")),
+            "quoteVolume": _number(ticker.get("quoteVolume")),
+            "priceChange24h": _number(ticker.get("percentage")),
+            "timestamp": ticker.get("timestamp"),
+            "datetime": ticker.get("datetime"),
             "source": "ccxt_public",
         }
 
@@ -217,21 +165,18 @@ class MarketService:
         limit: int,
     ) -> dict[str, Any]:
         normalized_exchange = self._normalize_exchange(exchange_id)
-        inst_id = _to_okx_inst_id(symbol)
+        ccxt_symbol = _to_ccxt_symbol(symbol)
         safe_limit = _safe_limit(limit)
         try:
             exchange = self._exchange(normalized_exchange)
-            response = exchange.public_get_market_candles(
-                {"instId": inst_id, "bar": _okx_timeframe(timeframe), "limit": safe_limit},
-            )
+            rows = exchange.fetch_ohlcv(ccxt_symbol, timeframe=timeframe, limit=safe_limit)
         except Exception as error:
             raise MarketServiceError(str(error), 502) from error
 
-        rows = list(reversed(_data_rows(response, "OHLCV")))
         candles = [_parse_ohlcv(row) for row in rows]
         return {
             "exchange": normalized_exchange,
-            "symbol": _display_symbol(symbol, inst_id),
+            "symbol": ccxt_symbol,
             "timeframe": timeframe,
             "limit": safe_limit,
             "candles": [candle.__dict__ for candle in candles],

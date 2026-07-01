@@ -2,7 +2,7 @@ node_modules/
 .expo/
 .pnpm-eas-store/
 .pnpm-home/
-api/.venv/
+.venv-api/
 __pycache__/
 *.pyc
 api-smoke*.log

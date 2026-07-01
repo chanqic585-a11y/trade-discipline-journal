@@ -37,14 +37,14 @@ Create and activate a local Python environment, then install the backend depende
 
 ```powershell
 cd D:\Codex-Workspace\trade-discipline-journal
-python -m venv api\.venv
-api\.venv\Scripts\python.exe -m pip install -r api\requirements.txt
+python -m venv .venv-api
+.venv-api\Scripts\python.exe -m pip install -r api\requirements.txt
 ```
 
 Start the backend:
 
 ```powershell
-api\.venv\Scripts\python.exe -m uvicorn api.main:app --host 0.0.0.0 --port 8000
+.venv-api\Scripts\python.exe -m uvicorn api.main:app --host 0.0.0.0 --port 8000
 ```
 
 Check the backend:
