@@ -5,6 +5,7 @@ import {
   AlertType,
   DataQualitySummary,
   CreateTradeInput,
+  LatestSkillRunSummary,
   ReviewTradeInput,
   SkillResult,
   SkillResultSummary,
@@ -616,13 +617,14 @@ export async function createSkillResult(input: CreateSkillResultInput): Promise<
   const createdAt = new Date().toISOString();
   const result = await db.runAsync(
     `INSERT INTO SkillResults (
-      skillId, skillName, skillVersion, tradeId, symbol, category, score,
+      skillId, skillName, skillVersion, runGroupId, tradeId, symbol, category, score,
       label, summary, explanation, evidenceJson, outputJson, source, createdAt
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       input.skillId,
       input.skillName,
       input.skillVersion,
+      input.runGroupId,
       input.tradeId,
       input.symbol,
       input.category,
@@ -651,6 +653,32 @@ export async function listSkillResults(limit = 50): Promise<SkillResult[]> {
       ORDER BY createdAt DESC
       LIMIT ?`,
     [limit],
+  );
+}
+
+async function getLatestRunGroupId() {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ runGroupId: string | null }>(
+    `SELECT runGroupId FROM SkillResults
+      WHERE runGroupId IS NOT NULL
+      ORDER BY createdAt DESC
+      LIMIT 1`,
+  );
+  return row?.runGroupId ?? null;
+}
+
+export async function listLatestSkillResults(limit = 50): Promise<SkillResult[]> {
+  const db = await getDatabase();
+  const runGroupId = await getLatestRunGroupId();
+
+  if (!runGroupId) return [];
+
+  return db.getAllAsync<SkillResult>(
+    `SELECT * FROM SkillResults
+      WHERE runGroupId = ?
+      ORDER BY createdAt DESC
+      LIMIT ?`,
+    [runGroupId, limit],
   );
 }
 
@@ -698,5 +726,69 @@ export async function getSkillResultSummary(): Promise<SkillResultSummary> {
     averageScore: scoreRow?.averageScore ?? 0,
     warningCount: warningRow?.count ?? 0,
     dangerCount: dangerRow?.count ?? 0,
+  };
+}
+
+export async function getLatestSkillRunSummary(): Promise<LatestSkillRunSummary> {
+  const db = await getDatabase();
+  const runGroupId = await getLatestRunGroupId();
+
+  if (!runGroupId) {
+    return {
+      runGroupId: null,
+      resultCount: 0,
+      tradeCount: 0,
+      skillCount: 0,
+      averageScore: 0,
+      warningCount: 0,
+      dangerCount: 0,
+      startedAt: null,
+      completedAt: null,
+    };
+  }
+
+  const [resultRow, tradeRow, skillRow, scoreRow, timeRow, warningRow, dangerRow] = await Promise.all([
+    db.getFirstAsync<{ count: number }>(
+      'SELECT COUNT(*) as count FROM SkillResults WHERE runGroupId = ?',
+      [runGroupId],
+    ),
+    db.getFirstAsync<{ count: number }>(
+      'SELECT COUNT(DISTINCT tradeId) as count FROM SkillResults WHERE runGroupId = ?',
+      [runGroupId],
+    ),
+    db.getFirstAsync<{ count: number }>(
+      'SELECT COUNT(DISTINCT skillId) as count FROM SkillResults WHERE runGroupId = ?',
+      [runGroupId],
+    ),
+    db.getFirstAsync<{ averageScore: number | null }>(
+      'SELECT AVG(score) as averageScore FROM SkillResults WHERE runGroupId = ?',
+      [runGroupId],
+    ),
+    db.getFirstAsync<{ startedAt: string | null; completedAt: string | null }>(
+      'SELECT MIN(createdAt) as startedAt, MAX(createdAt) as completedAt FROM SkillResults WHERE runGroupId = ?',
+      [runGroupId],
+    ),
+    db.getFirstAsync<{ count: number }>(
+      `SELECT COUNT(*) as count FROM SkillResults
+        WHERE runGroupId = ? AND label IN ('caution', 'weak', 'volatile', 'low_quality_data', 'incomplete_review')`,
+      [runGroupId],
+    ),
+    db.getFirstAsync<{ count: number }>(
+      `SELECT COUNT(*) as count FROM SkillResults
+        WHERE runGroupId = ? AND label IN ('risky', 'rule_violation', 'discipline_loss')`,
+      [runGroupId],
+    ),
+  ]);
+
+  return {
+    runGroupId,
+    resultCount: resultRow?.count ?? 0,
+    tradeCount: tradeRow?.count ?? 0,
+    skillCount: skillRow?.count ?? 0,
+    averageScore: scoreRow?.averageScore ?? 0,
+    warningCount: warningRow?.count ?? 0,
+    dangerCount: dangerRow?.count ?? 0,
+    startedAt: timeRow?.startedAt ?? null,
+    completedAt: timeRow?.completedAt ?? null,
   };
 }

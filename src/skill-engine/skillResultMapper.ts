@@ -1,10 +1,14 @@
 import { CreateSkillResultInput, SkillOutput } from './skillTypes';
 
-export function mapSkillOutputToResult(output: SkillOutput): CreateSkillResultInput {
+export function mapSkillOutputToResult(
+  output: SkillOutput,
+  runGroupId: string | null,
+): CreateSkillResultInput {
   return {
     skillId: output.skillId,
     skillName: output.skillName,
     skillVersion: output.skillVersion,
+    runGroupId,
     tradeId: output.tradeId ?? null,
     symbol: output.symbol ?? null,
     category: output.category,

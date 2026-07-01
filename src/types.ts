@@ -176,6 +176,7 @@ export interface SkillResult {
   skillId: string;
   skillName: string;
   skillVersion: string;
+  runGroupId: string | null;
   tradeId: number | null;
   symbol: string | null;
   category: SkillCategory;
@@ -196,6 +197,18 @@ export interface SkillResultSummary {
   averageScore: number;
   warningCount: number;
   dangerCount: number;
+}
+
+export interface LatestSkillRunSummary {
+  runGroupId: string | null;
+  resultCount: number;
+  tradeCount: number;
+  skillCount: number;
+  averageScore: number;
+  warningCount: number;
+  dangerCount: number;
+  startedAt: string | null;
+  completedAt: string | null;
 }
 
 export interface DataQualitySummary {

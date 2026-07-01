@@ -166,6 +166,7 @@ export async function initDatabase() {
       skillId TEXT NOT NULL,
       skillName TEXT NOT NULL,
       skillVersion TEXT NOT NULL,
+      runGroupId TEXT,
       tradeId INTEGER,
       symbol TEXT,
       category TEXT NOT NULL,
@@ -196,6 +197,7 @@ export async function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_skill_results_trade ON SkillResults(tradeId);
     CREATE INDEX IF NOT EXISTS idx_skill_results_symbol ON SkillResults(symbol);
     CREATE INDEX IF NOT EXISTS idx_skill_results_created ON SkillResults(createdAt);
+    CREATE INDEX IF NOT EXISTS idx_skill_results_run_group ON SkillResults(runGroupId);
   `);
 
   const accountColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(AccountSettings)');
@@ -206,5 +208,10 @@ export async function initDatabase() {
     await db.execAsync('ALTER TABLE AccountSettings ADD COLUMN setupCompleted INTEGER NOT NULL DEFAULT 0;');
   }
 
-  await db.execAsync('PRAGMA user_version = 4;');
+  const skillResultColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(SkillResults)');
+  if (!skillResultColumns.some((column) => column.name === 'runGroupId')) {
+    await db.execAsync('ALTER TABLE SkillResults ADD COLUMN runGroupId TEXT;');
+  }
+
+  await db.execAsync('PRAGMA user_version = 5;');
 }

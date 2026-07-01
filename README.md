@@ -127,6 +127,24 @@ V6 safety boundaries:
 - No order placement or cancellation.
 - Skill output is research observation only and is not a trading command.
 
+## V6.1 Skill Run Groups
+
+V6.1 improves long-term Skill Engine use by grouping every batch run.
+
+Implemented in this version:
+
+- `SkillResults.runGroupId` groups all rows created by one `Run All Skills` action.
+- New installs create `SkillResults` with `runGroupId`.
+- Existing installs use a safe migration: `ALTER TABLE SkillResults ADD COLUMN runGroupId TEXT`.
+- Old `SkillResults` rows are kept and are not deleted.
+- Skill Engine now displays a Latest Run Summary.
+- Skill Engine prioritizes the latest grouped run results instead of mixing older runs together.
+- Repository helpers:
+  - `listLatestSkillResults`
+  - `getLatestSkillRunSummary`
+
+V6.1 does not change the five built-in Skills. It does not add AI, signals, exchange trading permissions, automatic order placement, or trading advice.
+
 ## V2 AI Trading Copilot Foundation
 
 V2 moves the app from a pure trading journal toward an AI Trading Copilot foundation while keeping the V1.1 safety boundaries.
@@ -207,6 +225,7 @@ The Data Quality page can export all local `TradeFeatures` rows as CSV through t
 - Optional V4 FastAPI backend for OKX public ticker, OHLCV, and market features.
 - Optional V5 Python Feature Engine for public-market feature enrichment.
 - Local V6 Skill Engine for reusable research observations.
+- V6.1 grouped Skill runs with latest-run result focus.
 - Four bottom tabs: 首页, 计划, 复盘, 我的. Monitor, Statistics, Rules, and History live under 我的.
 - SQLite local storage. No login and no cloud sync.
 
@@ -460,4 +479,4 @@ src/
 - `TradeFeatures`
 - `SkillResults`
 
-The database is created locally by `expo-sqlite` on first app launch. V2, V3, and V6 add new tables through non-destructive migrations with `CREATE TABLE IF NOT EXISTS`; old `Trades`, `AccountSettings`, `AlertLogs`, and `TradeFeatures` data is not deleted or rebuilt.
+The database is created locally by `expo-sqlite` on first app launch. V2, V3, and V6 add new tables through non-destructive migrations with `CREATE TABLE IF NOT EXISTS`; V6.1 adds nullable `SkillResults.runGroupId` with `ALTER TABLE` when needed. Old `Trades`, `AccountSettings`, `AlertLogs`, `TradeFeatures`, and `SkillResults` data is not deleted or rebuilt.
