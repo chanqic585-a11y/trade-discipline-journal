@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { Alert, Share, StyleSheet, Text, View } from 'react-native';
 import { Button, StatCard } from '../components/Controls';
 import { Screen } from '../components/Screen';
@@ -30,10 +32,32 @@ function parseMissingFields(feature: TradeFeature) {
   }
 }
 
+function pad2(value: number) {
+  return String(value).padStart(2, '0');
+}
+
+function buildCsvFileName(date = new Date()) {
+  const year = date.getFullYear();
+  const month = pad2(date.getMonth() + 1);
+  const day = pad2(date.getDate());
+  const hour = pad2(date.getHours());
+  const minute = pad2(date.getMinutes());
+  const second = pad2(date.getSeconds());
+  return `trade_features_${year}${month}${day}_${hour}${minute}${second}.csv`;
+}
+
+async function shareCsvText(csv: string) {
+  await Share.share({
+    title: 'TradeFeatures CSV',
+    message: csv,
+  });
+}
+
 export function DataQualityScreen({ refreshKey }: { refreshKey: number }) {
   const [summary, setSummary] = useState<DataQualitySummary>(emptySummary);
   const [features, setFeatures] = useState<TradeFeature[]>([]);
   const [working, setWorking] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const load = async () => {
     const [nextSummary, nextFeatures] = await Promise.all([getDataQualitySummary(), listTradeFeatures()]);
@@ -65,10 +89,47 @@ export function DataQualityScreen({ refreshKey }: { refreshKey: number }) {
     }
 
     const csv = buildTradeFeaturesCsv(features);
-    await Share.share({
-      title: 'TradeFeatures CSV',
-      message: csv,
-    });
+    setExporting(true);
+
+    try {
+      const exportDirectory = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
+
+      if (!exportDirectory) {
+        await shareCsvText(csv);
+        return;
+      }
+
+      const fileName = buildCsvFileName();
+      const fileUri = `${exportDirectory}${fileName}`;
+
+      await FileSystem.writeAsStringAsync(fileUri, csv, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      const canShareFile = await Sharing.isAvailableAsync();
+      if (!canShareFile) {
+        await shareCsvText(csv);
+        return;
+      }
+
+      await Sharing.shareAsync(fileUri, {
+        mimeType: 'text/csv',
+        UTI: 'public.comma-separated-values-text',
+        dialogTitle: 'Export TradeFeatures CSV',
+      });
+    } catch (error) {
+      console.warn('CSV file export failed, falling back to text share.', error);
+      try {
+        await shareCsvText(csv);
+      } catch (fallbackError) {
+        Alert.alert(
+          'CSV export failed',
+          fallbackError instanceof Error ? fallbackError.message : 'Unable to export TradeFeatures CSV.',
+        );
+      }
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -98,7 +159,7 @@ export function DataQualityScreen({ refreshKey }: { refreshKey: number }) {
       </View>
 
       <Button label={working ? 'Generating...' : 'Generate / Refresh Features'} onPress={generate} />
-      <Button label="Export TradeFeatures CSV" onPress={exportCsv} tone="neutral" />
+      <Button label={exporting ? 'Exporting...' : 'Export TradeFeatures CSV'} onPress={exportCsv} tone="neutral" />
 
       <Text style={styles.sectionTitle}>Recent Feature Rows</Text>
       {features.length === 0 ? (
