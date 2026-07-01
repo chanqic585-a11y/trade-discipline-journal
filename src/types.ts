@@ -6,9 +6,20 @@ export type SetupType =
   | 'extreme_fear_rebound'
   | 'other';
 export type EmotionBefore = 'calm' | 'anxious' | 'greedy' | 'revenge' | 'fomo';
-export type TradeStatus = 'planned' | 'reviewed';
+export type TradeStatus = 'planned' | 'open' | 'reviewed';
 export type LossType = 'strategy_loss' | 'discipline_loss' | 'no_loss';
 export type AlertType = 'stop_loss' | 'take_profit';
+export type SnapshotType = 'entry' | 'update' | 'close';
+export type TimelineEventType =
+  | 'trade_created'
+  | 'snapshot_saved'
+  | 'analysis_generated'
+  | 'risk_calculated'
+  | 'review_completed'
+  | 'target_hit'
+  | 'stop_loss_hit'
+  | 'risk_warning'
+  | 'position_closed';
 
 export interface AccountSettings {
   id: number;
@@ -66,6 +77,46 @@ export interface AlertLog {
   createdAt: string;
 }
 
+export interface TradeAnalysis {
+  id: number;
+  tradeId: number;
+  trend: string;
+  volumeState: string;
+  rsi: number;
+  atr: number;
+  setupType: string;
+  confidence: number;
+  support: number;
+  resistance: number;
+  riskWarning: string;
+  marketSummary: string;
+  isMock: boolean;
+  createdAt: string;
+}
+
+export interface TradeSnapshot {
+  id: number;
+  tradeId: number;
+  symbol: string;
+  direction: Direction;
+  entryPrice: number;
+  currentPrice: number;
+  positionSize: number;
+  leverage: number;
+  snapshotType: SnapshotType;
+  createdAt: string;
+}
+
+export interface TradeTimelineEvent {
+  id: number;
+  tradeId: number;
+  eventType: TimelineEventType;
+  title: string;
+  description: string;
+  metadataJson: string;
+  createdAt: string;
+}
+
 export interface CreateTradeInput {
   symbol: string;
   marketType: MarketType;
@@ -80,6 +131,16 @@ export interface CreateTradeInput {
   emotionBefore: EmotionBefore;
   isFollowingSystem: boolean;
   screenshotNote: string;
+}
+
+export interface CreateQuickTradeInput {
+  symbol: string;
+  direction: Direction;
+  entryPrice: number;
+  positionSize: number;
+  leverage: number;
+  stopLossPrice: number | null;
+  takeProfitPrice: number | null;
 }
 
 export interface ReviewTradeInput {
@@ -101,6 +162,9 @@ export interface DashboardSummary {
   todayPnl: number;
   todayTradeCount: number;
   todayConsecutiveLosses: number;
+  openTradeCount: number;
+  todayRiskPercent: number;
+  aiWatch: string;
   disciplineScore: number;
   disciplineScoreReasons: string[];
   canTradeToday: boolean;

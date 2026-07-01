@@ -6,7 +6,7 @@ import { DashboardScreen } from './src/screens/DashboardScreen';
 import { InitialSetupScreen } from './src/screens/InitialSetupScreen';
 import { MyScreen } from './src/screens/MyScreen';
 import { ReviewTradeScreen } from './src/screens/ReviewTradeScreen';
-import { TradePlanScreen } from './src/screens/TradePlanScreen';
+import { TradeWorkspaceScreen } from './src/screens/TradeWorkspaceScreen';
 import { PriceMonitorProvider } from './src/services/PriceMonitorContext';
 import { colors, spacing } from './src/theme/theme';
 
@@ -61,7 +61,7 @@ export default function App() {
     }
 
     if (activeTab === 'dashboard') return <DashboardScreen refreshKey={refreshKey} />;
-    if (activeTab === 'plan') return <TradePlanScreen onSaved={() => { refresh(); setActiveTab('dashboard'); }} />;
+    if (activeTab === 'plan') return <TradeWorkspaceScreen refreshKey={refreshKey} onSaved={refresh} />;
     if (activeTab === 'review') return <ReviewTradeScreen onSaved={() => { refresh(); setActiveTab('dashboard'); }} />;
     return <MyScreen refreshKey={refreshKey} onSaved={refresh} />;
   };
@@ -71,7 +71,7 @@ export default function App() {
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <View style={styles.header}>
         <Text style={styles.title}>Trade Discipline Journal</Text>
-        <Text style={styles.subtitle}>Plan first. Review after. No signals.</Text>
+        <Text style={styles.subtitle}>AI Trading Copilot Foundation. No signals. No auto trading.</Text>
       </View>
       {ready && setupComplete ? (
         <PriceMonitorProvider refreshKey={refreshKey}>

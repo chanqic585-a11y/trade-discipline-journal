@@ -22,7 +22,7 @@ export function HistoryScreen({ refreshKey }: { refreshKey: number }) {
     if (filter === 'win') return trades.filter((trade) => (trade.pnl ?? 0) > 0);
     if (filter === 'loss') return trades.filter((trade) => (trade.pnl ?? 0) < 0);
     if (filter === 'discipline') return trades.filter((trade) => trade.lossType === 'discipline_loss');
-    if (filter === 'unreviewed') return trades.filter((trade) => trade.status === 'planned');
+    if (filter === 'unreviewed') return trades.filter((trade) => trade.status !== 'reviewed');
     return trades;
   }, [filter, trades]);
 
@@ -49,7 +49,7 @@ export function HistoryScreen({ refreshKey }: { refreshKey: number }) {
             <View style={styles.row}>
               <Text style={styles.title}>{trade.symbol}</Text>
               <Text style={[styles.pnl, (trade.pnl ?? 0) < 0 && styles.pnlLoss]}>
-                {trade.status === 'planned' ? '未复盘' : (trade.pnl ?? 0).toFixed(2)}
+                {trade.status !== 'reviewed' ? '未复盘' : (trade.pnl ?? 0).toFixed(2)}
               </Text>
             </View>
             <Text style={styles.meta}>

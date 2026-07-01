@@ -6,6 +6,10 @@ import {
   CreateTradeInput,
   ReviewTradeInput,
   Trade,
+  TradeAnalysis,
+  TradeSnapshot,
+  TradeStatus,
+  TradeTimelineEvent,
 } from '../types';
 
 type TradeRow = Omit<
@@ -30,6 +34,10 @@ type AccountRow = Omit<AccountSettings, 'preTradeCheckEnabled' | 'setupCompleted
   setupCompleted: number;
 };
 
+type TradeAnalysisRow = Omit<TradeAnalysis, 'isMock'> & {
+  isMock: number;
+};
+
 function toBoolean(value: number | null): boolean | null {
   if (value === null) return null;
   return value === 1;
@@ -52,6 +60,13 @@ function mapAccount(row: AccountRow): AccountSettings {
     ...row,
     preTradeCheckEnabled: row.preTradeCheckEnabled === 1,
     setupCompleted: row.setupCompleted === 1,
+  };
+}
+
+function mapTradeAnalysis(row: TradeAnalysisRow): TradeAnalysis {
+  return {
+    ...row,
+    isMock: row.isMock === 1,
   };
 }
 
@@ -117,7 +132,7 @@ export async function updateAccountSettings(
   );
 }
 
-export async function createTrade(input: CreateTradeInput): Promise<number> {
+export async function createTrade(input: CreateTradeInput, status: Exclude<TradeStatus, 'reviewed'> = 'planned'): Promise<number> {
   const db = await getDatabase();
   const now = new Date().toISOString();
   const result = await db.runAsync(
@@ -125,7 +140,7 @@ export async function createTrade(input: CreateTradeInput): Promise<number> {
       symbol, marketType, leverage, direction, entryPrice, stopLossPrice, takeProfitPrice,
       positionSize, setupType, entryReason, emotionBefore, isFollowingSystem, screenshotNote,
       status, createdAt
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'planned', ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       input.symbol.trim().toUpperCase(),
       input.marketType,
@@ -140,6 +155,7 @@ export async function createTrade(input: CreateTradeInput): Promise<number> {
       input.emotionBefore,
       input.isFollowingSystem ? 1 : 0,
       input.screenshotNote.trim(),
+      status,
       now,
     ],
   );
@@ -189,6 +205,19 @@ export async function reviewTrade(input: ReviewTradeInput) {
       WHERE id = 1`,
     [input.pnl, now],
   );
+
+  await db.runAsync(
+    `INSERT INTO TradeTimeline (
+      tradeId, eventType, title, description, metadataJson, createdAt
+    ) VALUES (?, 'review_completed', 'Review Completed', 'Trade review was saved and account balance was updated.', ?, ?)`,
+    [input.tradeId, JSON.stringify({ pnl: input.pnl, lossType: input.lossType }), now],
+  );
+}
+
+export async function getTradeById(tradeId: number): Promise<Trade | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<TradeRow>('SELECT * FROM Trades WHERE id = ?', [tradeId]);
+  return row ? mapTrade(row) : null;
 }
 
 export async function listTrades(): Promise<Trade[]> {
@@ -200,7 +229,15 @@ export async function listTrades(): Promise<Trade[]> {
 export async function listUnreviewedTrades(): Promise<Trade[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<TradeRow>(
-    `SELECT * FROM Trades WHERE status = 'planned' ORDER BY createdAt ASC`,
+    `SELECT * FROM Trades WHERE status IN ('planned', 'open') ORDER BY createdAt ASC`,
+  );
+  return rows.map(mapTrade);
+}
+
+export async function listOpenTrades(): Promise<Trade[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<TradeRow>(
+    `SELECT * FROM Trades WHERE status IN ('planned', 'open') ORDER BY createdAt DESC`,
   );
   return rows.map(mapTrade);
 }
@@ -254,6 +291,125 @@ export async function listAlertLogs(limit = 20): Promise<AlertLog[]> {
   const db = await getDatabase();
   return db.getAllAsync<AlertLog>(
     `SELECT * FROM AlertLogs
+      ORDER BY createdAt DESC
+      LIMIT ?`,
+    [limit],
+  );
+}
+
+export async function createTradeAnalysis(input: Omit<TradeAnalysis, 'id' | 'createdAt'>): Promise<number> {
+  const db = await getDatabase();
+  const result = await db.runAsync(
+    `INSERT INTO TradeAnalysis (
+      tradeId, trend, volumeState, rsi, atr, setupType, confidence, support,
+      resistance, riskWarning, marketSummary, isMock, createdAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      input.tradeId,
+      input.trend,
+      input.volumeState,
+      input.rsi,
+      input.atr,
+      input.setupType,
+      input.confidence,
+      input.support,
+      input.resistance,
+      input.riskWarning,
+      input.marketSummary,
+      input.isMock ? 1 : 0,
+      new Date().toISOString(),
+    ],
+  );
+  return result.lastInsertRowId;
+}
+
+export async function getTradeAnalysisByTradeId(tradeId: number): Promise<TradeAnalysis | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<TradeAnalysisRow>(
+    `SELECT * FROM TradeAnalysis
+      WHERE tradeId = ?
+      ORDER BY createdAt DESC
+      LIMIT 1`,
+    [tradeId],
+  );
+  return row ? mapTradeAnalysis(row) : null;
+}
+
+export async function createTradeSnapshot(input: Omit<TradeSnapshot, 'id' | 'createdAt'>): Promise<number> {
+  const db = await getDatabase();
+  const result = await db.runAsync(
+    `INSERT INTO TradeSnapshots (
+      tradeId, symbol, direction, entryPrice, currentPrice, positionSize,
+      leverage, snapshotType, createdAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      input.tradeId,
+      input.symbol,
+      input.direction,
+      input.entryPrice,
+      input.currentPrice,
+      input.positionSize,
+      input.leverage,
+      input.snapshotType,
+      new Date().toISOString(),
+    ],
+  );
+  return result.lastInsertRowId;
+}
+
+export async function listTradeSnapshots(tradeId: number): Promise<TradeSnapshot[]> {
+  const db = await getDatabase();
+  return db.getAllAsync<TradeSnapshot>(
+    `SELECT * FROM TradeSnapshots
+      WHERE tradeId = ?
+      ORDER BY createdAt DESC`,
+    [tradeId],
+  );
+}
+
+export async function getLatestTradeSnapshot(tradeId: number): Promise<TradeSnapshot | null> {
+  const db = await getDatabase();
+  return db.getFirstAsync<TradeSnapshot>(
+    `SELECT * FROM TradeSnapshots
+      WHERE tradeId = ?
+      ORDER BY createdAt DESC
+      LIMIT 1`,
+    [tradeId],
+  );
+}
+
+export async function createTradeTimelineEvent(input: Omit<TradeTimelineEvent, 'id' | 'createdAt'>): Promise<number> {
+  const db = await getDatabase();
+  const result = await db.runAsync(
+    `INSERT INTO TradeTimeline (
+      tradeId, eventType, title, description, metadataJson, createdAt
+    ) VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      input.tradeId,
+      input.eventType,
+      input.title,
+      input.description,
+      input.metadataJson,
+      new Date().toISOString(),
+    ],
+  );
+  return result.lastInsertRowId;
+}
+
+export async function listTradeTimeline(tradeId: number): Promise<TradeTimelineEvent[]> {
+  const db = await getDatabase();
+  return db.getAllAsync<TradeTimelineEvent>(
+    `SELECT * FROM TradeTimeline
+      WHERE tradeId = ?
+      ORDER BY createdAt ASC`,
+    [tradeId],
+  );
+}
+
+export async function listRecentTimeline(limit = 5): Promise<TradeTimelineEvent[]> {
+  const db = await getDatabase();
+  return db.getAllAsync<TradeTimelineEvent>(
+    `SELECT * FROM TradeTimeline
       ORDER BY createdAt DESC
       LIMIT ?`,
     [limit],

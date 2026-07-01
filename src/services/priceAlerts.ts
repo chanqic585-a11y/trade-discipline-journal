@@ -7,7 +7,7 @@ export interface PriceTriggerResult {
 }
 
 export interface PriceDistance {
-  stopLossPercent: number;
+  stopLossPercent: number | null;
   takeProfitPercent: number | null;
 }
 
@@ -15,7 +15,7 @@ export function evaluatePriceTrigger(trade: Trade, currentPrice: number): PriceT
   if (!Number.isFinite(currentPrice) || currentPrice <= 0) return null;
 
   if (trade.direction === 'long') {
-    if (currentPrice <= trade.stopLossPrice) {
+    if (trade.stopLossPrice > 0 && currentPrice <= trade.stopLossPrice) {
       return {
         alertType: 'stop_loss',
         triggerPrice: trade.stopLossPrice,
@@ -33,7 +33,7 @@ export function evaluatePriceTrigger(trade: Trade, currentPrice: number): PriceT
   }
 
   if (trade.direction === 'short') {
-    if (currentPrice >= trade.stopLossPrice) {
+    if (trade.stopLossPrice > 0 && currentPrice >= trade.stopLossPrice) {
       return {
         alertType: 'stop_loss',
         triggerPrice: trade.stopLossPrice,
@@ -56,13 +56,16 @@ export function evaluatePriceTrigger(trade: Trade, currentPrice: number): PriceT
 export function calculatePriceDistance(trade: Trade, currentPrice: number): PriceDistance {
   if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
     return {
-      stopLossPercent: 0,
+      stopLossPercent: null,
       takeProfitPercent: trade.takeProfitPrice === null ? null : 0,
     };
   }
 
   return {
-    stopLossPercent: (Math.abs(currentPrice - trade.stopLossPrice) / currentPrice) * 100,
+    stopLossPercent:
+      trade.stopLossPrice <= 0
+        ? null
+        : (Math.abs(currentPrice - trade.stopLossPrice) / currentPrice) * 100,
     takeProfitPercent:
       trade.takeProfitPrice === null
         ? null

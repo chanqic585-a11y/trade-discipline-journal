@@ -71,10 +71,57 @@ export async function initDatabase() {
       FOREIGN KEY (tradeId) REFERENCES Trades(id)
     );
 
+    CREATE TABLE IF NOT EXISTS TradeAnalysis (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tradeId INTEGER NOT NULL,
+      trend TEXT NOT NULL,
+      volumeState TEXT NOT NULL,
+      rsi REAL NOT NULL,
+      atr REAL NOT NULL,
+      setupType TEXT NOT NULL,
+      confidence REAL NOT NULL,
+      support REAL NOT NULL,
+      resistance REAL NOT NULL,
+      riskWarning TEXT NOT NULL,
+      marketSummary TEXT NOT NULL,
+      isMock INTEGER NOT NULL DEFAULT 1,
+      createdAt TEXT NOT NULL,
+      FOREIGN KEY (tradeId) REFERENCES Trades(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS TradeSnapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tradeId INTEGER NOT NULL,
+      symbol TEXT NOT NULL,
+      direction TEXT NOT NULL,
+      entryPrice REAL NOT NULL,
+      currentPrice REAL NOT NULL,
+      positionSize REAL NOT NULL,
+      leverage INTEGER NOT NULL,
+      snapshotType TEXT NOT NULL,
+      createdAt TEXT NOT NULL,
+      FOREIGN KEY (tradeId) REFERENCES Trades(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS TradeTimeline (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tradeId INTEGER NOT NULL,
+      eventType TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      metadataJson TEXT NOT NULL,
+      createdAt TEXT NOT NULL,
+      FOREIGN KEY (tradeId) REFERENCES Trades(id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_trades_createdAt ON Trades(createdAt);
     CREATE INDEX IF NOT EXISTS idx_trades_status ON Trades(status);
     CREATE INDEX IF NOT EXISTS idx_alert_logs_trade_type ON AlertLogs(tradeId, alertType);
     CREATE INDEX IF NOT EXISTS idx_alert_logs_createdAt ON AlertLogs(createdAt);
+    CREATE INDEX IF NOT EXISTS idx_trade_analysis_trade ON TradeAnalysis(tradeId);
+    CREATE INDEX IF NOT EXISTS idx_trade_snapshots_trade_created ON TradeSnapshots(tradeId, createdAt);
+    CREATE INDEX IF NOT EXISTS idx_trade_timeline_trade_created ON TradeTimeline(tradeId, createdAt);
+    CREATE INDEX IF NOT EXISTS idx_trade_timeline_created ON TradeTimeline(createdAt);
   `);
 
   const accountColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(AccountSettings)');
@@ -85,5 +132,5 @@ export async function initDatabase() {
     await db.execAsync('ALTER TABLE AccountSettings ADD COLUMN setupCompleted INTEGER NOT NULL DEFAULT 0;');
   }
 
-  await db.execAsync('PRAGMA user_version = 1;');
+  await db.execAsync('PRAGMA user_version = 2;');
 }

@@ -51,7 +51,7 @@ export function MonitorScreen() {
               </Text>
               <View style={styles.distanceRow}>
                 <Text style={styles.distanceText}>
-                  距离止损 {distance ? `${distance.stopLossPercent.toFixed(2)}%` : '-'}
+                  距离止损 {distance?.stopLossPercent === null || !distance ? '-' : `${distance.stopLossPercent.toFixed(2)}%`}
                 </Text>
                 <Text style={styles.distanceText}>
                   距离止盈 {distance?.takeProfitPercent === null || !distance ? '-' : `${distance.takeProfitPercent.toFixed(2)}%`}

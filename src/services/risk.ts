@@ -8,8 +8,48 @@ export function calculateMaxLoss(
   positionSize: number,
   leverage: number,
 ) {
-  if (entryPrice <= 0 || positionSize <= 0 || leverage <= 0) return 0;
+  if (entryPrice <= 0 || stopLossPrice <= 0 || positionSize <= 0 || leverage <= 0) return 0;
   return (Math.abs(entryPrice - stopLossPrice) / entryPrice) * positionSize * leverage;
+}
+
+export interface TradeRiskMetrics {
+  riskAmount: number | null;
+  estimatedRiskPercent: number | null;
+  rrRatio: number | null;
+  stopLossDistancePercent: number | null;
+  takeProfitDistancePercent: number | null;
+  warning: string;
+}
+
+export function calculateTradeRiskMetrics(trade: Trade, accountBalance: number): TradeRiskMetrics {
+  const hasStopLoss = trade.stopLossPrice > 0;
+  const hasTakeProfit = trade.takeProfitPrice !== null && trade.takeProfitPrice > 0;
+  const stopLossDistancePercent = hasStopLoss
+    ? (Math.abs(trade.entryPrice - trade.stopLossPrice) / trade.entryPrice) * 100
+    : null;
+  const takeProfitDistancePercent = hasTakeProfit
+    ? (Math.abs(trade.entryPrice - (trade.takeProfitPrice ?? 0)) / trade.entryPrice) * 100
+    : null;
+  const riskAmount = hasStopLoss
+    ? calculateMaxLoss(trade.entryPrice, trade.stopLossPrice, trade.positionSize, trade.leverage)
+    : null;
+  const estimatedRiskPercent = riskAmount !== null && accountBalance > 0
+    ? (riskAmount / accountBalance) * 100
+    : null;
+  const rewardDistance = hasTakeProfit ? Math.abs((trade.takeProfitPrice ?? 0) - trade.entryPrice) : 0;
+  const riskDistance = hasStopLoss ? Math.abs(trade.entryPrice - trade.stopLossPrice) : 0;
+  const rrRatio = hasStopLoss && hasTakeProfit && riskDistance > 0 ? rewardDistance / riskDistance : null;
+
+  return {
+    riskAmount,
+    estimatedRiskPercent,
+    rrRatio,
+    stopLossDistancePercent,
+    takeProfitDistancePercent,
+    warning: hasStopLoss && hasTakeProfit
+      ? 'Risk calculated from saved entry, stop loss, target, position size, and leverage.'
+      : 'Risk calculation requires stop loss / take profit.',
+  };
 }
 
 export function calculateConsecutiveLosses(trades: Trade[]) {
@@ -35,6 +75,12 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
 
   const todayPnl = todayTrades.reduce((sum, trade) => sum + (trade.pnl ?? 0), 0);
   const todayReviewedTrades = todayTrades.filter((trade) => trade.status === 'reviewed');
+  const openTrades = todayTrades.filter((trade) => trade.status !== 'reviewed');
+  const todayRiskAmount = openTrades.reduce(
+    (sum, trade) => sum + calculateMaxLoss(trade.entryPrice, trade.stopLossPrice, trade.positionSize, trade.leverage),
+    0,
+  );
+  const todayRiskPercent = account.currentBalance > 0 ? (todayRiskAmount / account.currentBalance) * 100 : 0;
   const todayConsecutiveLosses = calculateConsecutiveLosses(todayReviewedTrades);
   const warnings: string[] = [];
   const disciplineScoreReasons: string[] = [];
@@ -88,6 +134,11 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
     todayPnl,
     todayTradeCount: todayTrades.length,
     todayConsecutiveLosses,
+    openTradeCount: unreviewedTrades.length,
+    todayRiskPercent,
+    aiWatch: warnings.length > 0
+      ? 'Mock Copilot sees discipline pressure today. Review risk state before adding exposure.'
+      : 'Mock Copilot sees no blocking discipline warning in today local data.',
     disciplineScore: Math.max(0, Math.min(100, disciplineScore)),
     disciplineScoreReasons,
     canTradeToday: warnings.length === 0,

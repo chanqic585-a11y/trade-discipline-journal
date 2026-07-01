@@ -2,15 +2,28 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Screen } from '../components/Screen';
 import { StatCard } from '../components/Controls';
+import { listOpenTrades, listRecentTimeline } from '../db/repositories';
+import { formatDateTime } from '../services/date';
+import { calculatePriceDistance, toOkxInstrumentId } from '../services/priceAlerts';
+import { usePriceMonitor } from '../services/PriceMonitorContext';
 import { getDashboardSummary } from '../services/risk';
-import { DashboardSummary } from '../types';
+import { DashboardSummary, Trade, TradeTimelineEvent } from '../types';
 import { colors, spacing } from '../theme/theme';
 
 export function DashboardScreen({ refreshKey }: { refreshKey: number }) {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [openTrades, setOpenTrades] = useState<Trade[]>([]);
+  const [timeline, setTimeline] = useState<TradeTimelineEvent[]>([]);
+  const { prices } = usePriceMonitor();
 
   useEffect(() => {
-    getDashboardSummary().then(setSummary).catch(console.error);
+    Promise.all([getDashboardSummary(), listOpenTrades(), listRecentTimeline(3)])
+      .then(([nextSummary, nextOpenTrades, nextTimeline]) => {
+        setSummary(nextSummary);
+        setOpenTrades(nextOpenTrades);
+        setTimeline(nextTimeline);
+      })
+      .catch(console.error);
   }, [refreshKey]);
 
   if (!summary) {
@@ -22,9 +35,17 @@ export function DashboardScreen({ refreshKey }: { refreshKey: number }) {
   }
 
   const danger = !summary.canTradeToday;
+  const closestStopLoss = findClosestDistance(openTrades, prices, 'stop_loss');
+  const closestTakeProfit = findClosestDistance(openTrades, prices, 'take_profit');
 
   return (
     <Screen>
+      <View style={styles.copilotPanel}>
+        <Text style={styles.copilotKicker}>Trading Copilot</Text>
+        <Text style={styles.copilotTitle}>AI Watch</Text>
+        <Text style={styles.copilotText}>{summary.aiWatch}</Text>
+      </View>
+
       <View style={[styles.statusPanel, danger ? styles.statusDanger : styles.statusOk]}>
         <Text style={[styles.statusTitle, danger && styles.statusTitleDanger]}>
           {summary.canTradeToday ? '今日可以创建计划' : '今日不建议继续交易'}
@@ -52,6 +73,10 @@ export function DashboardScreen({ refreshKey }: { refreshKey: number }) {
       </View>
 
       <View style={styles.grid}>
+        <StatCard label="Open Trades" value={String(summary.openTradeCount)} />
+        <StatCard label="Today's Risk" value={`${summary.todayRiskPercent.toFixed(2)}%`} danger={summary.todayRiskPercent >= summary.account.maxRiskPerTradePercent} />
+        <StatCard label="Closest Stop Loss" value={closestStopLoss} />
+        <StatCard label="Closest Take Profit" value={closestTakeProfit} />
         <StatCard label="当前账户余额" value={summary.account.currentBalance.toFixed(2)} />
         <StatCard label="今日盈亏" value={summary.todayPnl.toFixed(2)} danger={summary.todayPnl < 0} />
         <StatCard label="今日交易次数" value={String(summary.todayTradeCount)} />
@@ -60,6 +85,20 @@ export function DashboardScreen({ refreshKey }: { refreshKey: number }) {
           value={String(summary.todayConsecutiveLosses)}
           danger={summary.todayConsecutiveLosses >= summary.account.maxConsecutiveLosses}
         />
+      </View>
+
+      <View style={styles.timelinePanel}>
+        <Text style={styles.noteTitle}>Recent Timeline</Text>
+        {timeline.length === 0 ? (
+          <Text style={styles.noteText}>No trade lifecycle events yet.</Text>
+        ) : (
+          timeline.map((event) => (
+            <View key={event.id} style={styles.timelineItem}>
+              <Text style={styles.timelineTitle}>{event.title}</Text>
+              <Text style={styles.noteText}>{formatDateTime(event.createdAt)}</Text>
+            </View>
+          ))
+        )}
       </View>
 
       <View style={styles.note}>
@@ -72,6 +111,23 @@ export function DashboardScreen({ refreshKey }: { refreshKey: number }) {
   );
 }
 
+function findClosestDistance(trades: Trade[], prices: Record<string, number>, type: 'stop_loss' | 'take_profit') {
+  const candidates = trades
+    .map((trade) => {
+      const price = prices[toOkxInstrumentId(trade.symbol, trade.marketType)] ?? trade.entryPrice;
+      const distance = calculatePriceDistance(trade, price);
+      const value = type === 'stop_loss' ? distance.stopLossPercent : distance.takeProfitPercent;
+      return value === null ? null : { symbol: trade.symbol, value };
+    })
+    .filter((candidate): candidate is { symbol: string; value: number } => candidate !== null)
+    .sort((a, b) => a.value - b.value);
+
+  if (candidates.length === 0) return '-';
+  const closest = candidates[0];
+  if (!closest) return '-';
+  return `${closest.symbol} ${closest.value.toFixed(2)}%`;
+}
+
 const styles = StyleSheet.create({
   muted: {
     color: colors.muted,
@@ -81,6 +137,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: spacing.md,
     marginBottom: spacing.md,
+  },
+  copilotPanel: {
+    borderColor: colors.accent,
+    borderRadius: 8,
+    borderWidth: 1,
+    backgroundColor: colors.accentSoft,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  copilotKicker: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: '800',
+    marginBottom: spacing.xs,
+  },
+  copilotTitle: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: spacing.xs,
+  },
+  copilotText: {
+    color: colors.text,
+    lineHeight: 20,
   },
   statusOk: {
     backgroundColor: colors.successSoft,
@@ -154,6 +234,25 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     padding: spacing.md,
     marginTop: spacing.sm,
+  },
+  timelinePanel: {
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  timelineItem: {
+    borderTopColor: colors.border,
+    borderTopWidth: 1,
+    paddingVertical: spacing.sm,
+  },
+  timelineTitle: {
+    color: colors.text,
+    fontWeight: '800',
+    marginBottom: 3,
   },
   noteTitle: {
     color: colors.text,

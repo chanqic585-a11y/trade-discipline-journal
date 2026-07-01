@@ -1,14 +1,37 @@
 # Trade Discipline Journal
 
-React Native + Expo MVP for crypto trade planning, review, discipline rules, and local statistics.
+React Native + Expo app for crypto trade planning, review, discipline rules, local statistics, and the V2 AI Trading Copilot foundation.
 
 This app is not investment advice. It only connects to OKX public market data for alerts, does not use trading permissions, does not provide buy/sell signals, and does not place orders.
+
+## V2 AI Trading Copilot Foundation
+
+V2 moves the app from a pure trading journal toward an AI Trading Copilot foundation while keeping the V1.1 safety boundaries.
+
+Implemented in this version:
+
+- Quick Trade for 10-second trade capture.
+- Trade Detail with Overview, Mock AI Analysis, Snapshot, Risk, Timeline, and Review status.
+- Local `TradeAnalysis`, `TradeSnapshots`, and `TradeTimeline` tables.
+- Service-layer flow for Quick Trade, mock analysis, snapshots, and lifecycle events.
+- Dashboard Copilot cards for Open Trades, Today's Risk, AI Watch, Recent Timeline, Closest Stop Loss, and Closest Take Profit.
+
+Important boundaries:
+
+- AI Analysis is currently Mock Analysis only.
+- No real AI API is connected.
+- No Feature Engine, Python backend, CCXT, machine learning, or signal engine is included in V2.
+- No Trade API key or Withdraw API key is stored.
+- The app does not place orders and does not automate trading.
+- Mock Analysis describes saved trade context only. It does not recommend buying or selling and does not predict future price.
 
 ## Features
 
 - Dashboard with discipline-first status.
 - Initial Setup for local starting capital. Suggested default: 15000.
 - Dashboard with discipline score.
+- Quick Trade with minimal fields: symbol, direction, entry price, position size, leverage, optional stop loss, and optional take profit.
+- Trade Detail with generated Mock Analysis, Snapshot, Risk Card, and Timeline.
 - Trade Plan form with stop-loss, leverage, emotion, Pre-Trade Checklist, and risk checks.
 - Review Trade flow for unreviewed planned trades.
 - Trade History with filters: all, win, loss, discipline loss, unreviewed.
@@ -17,6 +40,22 @@ This app is not investment advice. It only connects to OKX public market data fo
 - OKX public market monitor for planned trades while the app is open in the foreground.
 - Four bottom tabs: 首页, 计划, 复盘, 我的. Monitor, Statistics, Rules, and History live under 我的.
 - SQLite local storage. No login and no cloud sync.
+
+## Quick Trade Data Flow
+
+Quick Trade saves the trade and creates the V2 Copilot data records in this order:
+
+1. `createTrade()`
+2. `createEntrySnapshot()`
+3. `generateAndSaveMockAnalysis()`
+4. `createTimelineEvent("Trade Created")`
+5. `createTimelineEvent("Snapshot Saved")`
+6. `createTimelineEvent("Analysis Generated")`
+7. `calculateTradeRiskMetrics()`
+8. `createTimelineEvent("Risk Calculated")`
+9. Navigate to Trade Detail
+
+Quick Trade does not require long notes, manual setup labels, emotion fields, or the V1.1 Pre-Trade Checklist. The full V1.1 trade plan remains available from the Plan tab for slower planned trades.
 
 ## OKX Price Alerts
 
@@ -216,8 +255,9 @@ Default limits:
 - New plans are blocked when unreviewed trades exist.
 - Spot leverage is fixed to 1x.
 - Futures leverage must be 1 to 5.
-- Stop-loss price is required.
-- Pre-Trade Checklist must be fully checked before saving.
+- Stop-loss price is required in the full V1.1 plan flow.
+- Quick Trade allows missing stop loss so the trade can be captured quickly, but the Risk Card will show `Risk calculation requires stop loss / take profit.`
+- Pre-Trade Checklist must be fully checked before saving a full V1.1 plan.
 
 ## Project Structure
 
@@ -228,7 +268,7 @@ src/
   constants.ts     Labels and enum options
   db/              SQLite initialization and CRUD
   screens/         MVP screens
-  services/        Risk, statistics, date, notification, OKX monitor logic
+  services/        Risk, statistics, date, notification, OKX monitor, V2 Copilot data flow
   theme/           Colors and spacing
   types.ts         App TypeScript models
 ```
@@ -238,5 +278,8 @@ src/
 - `AccountSettings`
 - `Trades`
 - `AlertLogs`
+- `TradeAnalysis`
+- `TradeSnapshots`
+- `TradeTimeline`
 
-The database is created locally by `expo-sqlite` on first app launch.
+The database is created locally by `expo-sqlite` on first app launch. V2 adds new tables through non-destructive migrations with `CREATE TABLE IF NOT EXISTS`; old `Trades`, `AccountSettings`, and `AlertLogs` data is not deleted or rebuilt.
