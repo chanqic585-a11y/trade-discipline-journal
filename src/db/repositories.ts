@@ -6,6 +6,8 @@ import {
   DataQualitySummary,
   CreateTradeInput,
   ReviewTradeInput,
+  SkillResult,
+  SkillResultSummary,
   Trade,
   TradeAnalysis,
   TradeFeature,
@@ -45,6 +47,8 @@ type TradeFeatureRow = Omit<TradeFeature, 'isDisciplineLoss' | 'followedPlan' | 
   followedPlan: number | null;
   isFollowingSystem: number | null;
 };
+
+type CreateSkillResultInput = Omit<SkillResult, 'id' | 'createdAt'>;
 
 function toBoolean(value: number | null): boolean | null {
   if (value === null) return null;
@@ -604,5 +608,95 @@ export async function getDataQualitySummary(): Promise<DataQualitySummary> {
     nullFieldCount,
     exportableRows: featureRows,
     latestGeneratedAt: latestRow?.latestGeneratedAt ?? null,
+  };
+}
+
+export async function createSkillResult(input: CreateSkillResultInput): Promise<SkillResult> {
+  const db = await getDatabase();
+  const createdAt = new Date().toISOString();
+  const result = await db.runAsync(
+    `INSERT INTO SkillResults (
+      skillId, skillName, skillVersion, tradeId, symbol, category, score,
+      label, summary, explanation, evidenceJson, outputJson, source, createdAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      input.skillId,
+      input.skillName,
+      input.skillVersion,
+      input.tradeId,
+      input.symbol,
+      input.category,
+      input.score,
+      input.label,
+      input.summary,
+      input.explanation,
+      input.evidenceJson,
+      input.outputJson,
+      input.source,
+      createdAt,
+    ],
+  );
+
+  return {
+    ...input,
+    id: result.lastInsertRowId,
+    createdAt,
+  };
+}
+
+export async function listSkillResults(limit = 50): Promise<SkillResult[]> {
+  const db = await getDatabase();
+  return db.getAllAsync<SkillResult>(
+    `SELECT * FROM SkillResults
+      ORDER BY createdAt DESC
+      LIMIT ?`,
+    [limit],
+  );
+}
+
+export async function listSkillResultsByTradeId(tradeId: number): Promise<SkillResult[]> {
+  const db = await getDatabase();
+  return db.getAllAsync<SkillResult>(
+    `SELECT * FROM SkillResults
+      WHERE tradeId = ?
+      ORDER BY createdAt DESC`,
+    [tradeId],
+  );
+}
+
+export async function listSkillResultsBySkillId(skillId: string): Promise<SkillResult[]> {
+  const db = await getDatabase();
+  return db.getAllAsync<SkillResult>(
+    `SELECT * FROM SkillResults
+      WHERE skillId = ?
+      ORDER BY createdAt DESC`,
+    [skillId],
+  );
+}
+
+export async function getSkillResultSummary(): Promise<SkillResultSummary> {
+  const db = await getDatabase();
+  const [totalRow, skillsRow, scoreRow, latestRow, warningRow, dangerRow] = await Promise.all([
+    db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM SkillResults'),
+    db.getFirstAsync<{ count: number }>('SELECT COUNT(DISTINCT skillId) as count FROM SkillResults'),
+    db.getFirstAsync<{ averageScore: number | null }>('SELECT AVG(score) as averageScore FROM SkillResults'),
+    db.getFirstAsync<{ latestRunAt: string | null }>('SELECT MAX(createdAt) as latestRunAt FROM SkillResults'),
+    db.getFirstAsync<{ count: number }>(
+      `SELECT COUNT(*) as count FROM SkillResults
+        WHERE label IN ('caution', 'weak', 'volatile', 'low_quality_data', 'incomplete_review')`,
+    ),
+    db.getFirstAsync<{ count: number }>(
+      `SELECT COUNT(*) as count FROM SkillResults
+        WHERE label IN ('risky', 'rule_violation', 'discipline_loss')`,
+    ),
+  ]);
+
+  return {
+    totalResults: totalRow?.count ?? 0,
+    totalSkills: skillsRow?.count ?? 0,
+    latestRunAt: latestRow?.latestRunAt ?? null,
+    averageScore: scoreRow?.averageScore ?? 0,
+    warningCount: warningRow?.count ?? 0,
+    dangerCount: dangerRow?.count ?? 0,
   };
 }

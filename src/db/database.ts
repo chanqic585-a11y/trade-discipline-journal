@@ -161,6 +161,25 @@ export async function initDatabase() {
       FOREIGN KEY (tradeId) REFERENCES Trades(id)
     );
 
+    CREATE TABLE IF NOT EXISTS SkillResults (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      skillId TEXT NOT NULL,
+      skillName TEXT NOT NULL,
+      skillVersion TEXT NOT NULL,
+      tradeId INTEGER,
+      symbol TEXT,
+      category TEXT NOT NULL,
+      score REAL,
+      label TEXT,
+      summary TEXT NOT NULL,
+      explanation TEXT NOT NULL,
+      evidenceJson TEXT NOT NULL,
+      outputJson TEXT NOT NULL,
+      source TEXT NOT NULL,
+      createdAt TEXT NOT NULL,
+      FOREIGN KEY (tradeId) REFERENCES Trades(id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_trades_createdAt ON Trades(createdAt);
     CREATE INDEX IF NOT EXISTS idx_trades_status ON Trades(status);
     CREATE INDEX IF NOT EXISTS idx_alert_logs_trade_type ON AlertLogs(tradeId, alertType);
@@ -173,6 +192,10 @@ export async function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_trade_features_symbol ON TradeFeatures(symbol);
     CREATE INDEX IF NOT EXISTS idx_trade_features_setup ON TradeFeatures(setupType);
     CREATE INDEX IF NOT EXISTS idx_trade_features_quality ON TradeFeatures(dataQualityScore);
+    CREATE INDEX IF NOT EXISTS idx_skill_results_skill ON SkillResults(skillId);
+    CREATE INDEX IF NOT EXISTS idx_skill_results_trade ON SkillResults(tradeId);
+    CREATE INDEX IF NOT EXISTS idx_skill_results_symbol ON SkillResults(symbol);
+    CREATE INDEX IF NOT EXISTS idx_skill_results_created ON SkillResults(createdAt);
   `);
 
   const accountColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(AccountSettings)');
@@ -183,5 +206,5 @@ export async function initDatabase() {
     await db.execAsync('ALTER TABLE AccountSettings ADD COLUMN setupCompleted INTEGER NOT NULL DEFAULT 0;');
   }
 
-  await db.execAsync('PRAGMA user_version = 3;');
+  await db.execAsync('PRAGMA user_version = 4;');
 }

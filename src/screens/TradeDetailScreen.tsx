@@ -7,13 +7,14 @@ import {
   getLatestTradeSnapshot,
   getTradeAnalysisByTradeId,
   getTradeById,
+  listSkillResultsByTradeId,
   listTradeTimeline,
 } from '../db/repositories';
 import { formatDateTime } from '../services/date';
 import { toOkxInstrumentId } from '../services/priceAlerts';
 import { usePriceMonitor } from '../services/PriceMonitorContext';
 import { calculateTradeRiskMetrics } from '../services/risk';
-import { AccountSettings, Trade, TradeAnalysis, TradeSnapshot, TradeTimelineEvent } from '../types';
+import { AccountSettings, SkillResult, Trade, TradeAnalysis, TradeSnapshot, TradeTimelineEvent } from '../types';
 import { colors, spacing } from '../theme/theme';
 
 interface DetailState {
@@ -22,6 +23,7 @@ interface DetailState {
   analysis: TradeAnalysis | null;
   snapshot: TradeSnapshot | null;
   timeline: TradeTimelineEvent[];
+  skillResults: SkillResult[];
 }
 
 function formatNumber(value: number | null, digits = 2) {
@@ -48,10 +50,11 @@ export function TradeDetailScreen({ tradeId }: { tradeId: number }) {
       getTradeAnalysisByTradeId(tradeId),
       getLatestTradeSnapshot(tradeId),
       listTradeTimeline(tradeId),
+      listSkillResultsByTradeId(tradeId),
     ])
-      .then(([account, trade, analysis, snapshot, timeline]) => {
+      .then(([account, trade, analysis, snapshot, timeline, skillResults]) => {
         if (!trade) throw new Error('Trade not found.');
-        setState({ account, trade, analysis, snapshot, timeline });
+        setState({ account, trade, analysis, snapshot, timeline, skillResults });
       })
       .catch(console.error);
   }, [tradeId]);
@@ -70,7 +73,7 @@ export function TradeDetailScreen({ tradeId }: { tradeId: number }) {
     );
   }
 
-  const { account, analysis, snapshot, timeline, trade } = state;
+  const { account, analysis, skillResults, snapshot, timeline, trade } = state;
   const risk = calculateTradeRiskMetrics(trade, account.currentBalance);
 
   return (
@@ -145,6 +148,23 @@ export function TradeDetailScreen({ tradeId }: { tradeId: number }) {
               <Text style={styles.timelineTitle}>{event.title}</Text>
               <Text style={styles.timelineText}>{event.description}</Text>
               <Text style={styles.timelineTime}>{formatDateTime(event.createdAt)}</Text>
+            </View>
+          ))
+        )}
+      </Section>
+
+      <Section title="Skill Results">
+        {skillResults.length === 0 ? (
+          <Text style={styles.muted}>No skill results yet.</Text>
+        ) : (
+          skillResults.slice(0, 3).map((result) => (
+            <View key={result.id} style={styles.skillItem}>
+              <Text style={styles.timelineTitle}>{result.skillName}</Text>
+              <Text style={styles.timelineText}>
+                {result.label ?? 'unknown'} · {result.score === null ? '-' : result.score.toFixed(0)}
+              </Text>
+              <Text style={styles.timelineText}>{result.summary}</Text>
+              <Text style={styles.timelineTime}>{formatDateTime(result.createdAt)}</Text>
             </View>
           ))
         )}
@@ -261,6 +281,12 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   timelineItem: {
+    borderLeftColor: colors.accent,
+    borderLeftWidth: 3,
+    paddingLeft: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  skillItem: {
     borderLeftColor: colors.accent,
     borderLeftWidth: 3,
     paddingLeft: spacing.sm,

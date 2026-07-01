@@ -9,6 +9,14 @@ export type EmotionBefore = 'calm' | 'anxious' | 'greedy' | 'revenge' | 'fomo';
 export type TradeStatus = 'planned' | 'open' | 'watching' | 'closed' | 'reviewed';
 export type LossType = 'strategy_loss' | 'discipline_loss' | 'no_loss';
 export type AlertType = 'stop_loss' | 'take_profit';
+export type SkillCategory =
+  | 'entry_quality'
+  | 'risk'
+  | 'discipline'
+  | 'market_context'
+  | 'review'
+  | 'research';
+export type SkillSeverity = 'info' | 'warning' | 'danger' | 'success';
 export type SnapshotType = 'entry' | 'update' | 'close';
 export type TimelineEventType =
   | 'trade_created'
@@ -161,6 +169,33 @@ export interface TradeFeature {
   generatedAt: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SkillResult {
+  id: number;
+  skillId: string;
+  skillName: string;
+  skillVersion: string;
+  tradeId: number | null;
+  symbol: string | null;
+  category: SkillCategory;
+  score: number | null;
+  label: string | null;
+  summary: string;
+  explanation: string;
+  evidenceJson: string;
+  outputJson: string;
+  source: string;
+  createdAt: string;
+}
+
+export interface SkillResultSummary {
+  totalResults: number;
+  totalSkills: number;
+  latestRunAt: string | null;
+  averageScore: number;
+  warningCount: number;
+  dangerCount: number;
 }
 
 export interface DataQualitySummary {

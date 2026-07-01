@@ -5,10 +5,11 @@ import { DataQualityScreen } from './DataQualityScreen';
 import { HistoryScreen } from './HistoryScreen';
 import { MonitorScreen } from './MonitorScreen';
 import { RulesScreen } from './RulesScreen';
+import { SkillEngineScreen } from './SkillEngineScreen';
 import { StatisticsScreen } from './StatisticsScreen';
 import { colors, spacing } from '../theme/theme';
 
-type MyView = 'menu' | 'monitor' | 'stats' | 'rules' | 'history' | 'dataQuality';
+type MyView = 'menu' | 'monitor' | 'stats' | 'rules' | 'history' | 'dataQuality' | 'skills';
 
 interface MyScreenProps {
   refreshKey: number;
@@ -41,6 +42,11 @@ const entries: Array<{ key: MyView; title: string; description: string }> = [
     title: 'Feature Database',
     description: '生成 TradeFeatures、检查数据质量，并导出 CSV。',
   },
+  {
+    key: 'skills',
+    title: 'Skill Engine',
+    description: '运行可复用研究技能，分析入场质量、风险纪律、市场状态和复盘行为。',
+  },
 ];
 
 export function MyScreen({ refreshKey, onSaved }: MyScreenProps) {
@@ -51,11 +57,12 @@ export function MyScreen({ refreshKey, onSaved }: MyScreenProps) {
   if (view === 'rules') return <NestedView title="规则与提醒" onBack={() => setView('menu')}><RulesScreen onSaved={onSaved} /></NestedView>;
   if (view === 'history') return <NestedView title="交易记录" onBack={() => setView('menu')}><HistoryScreen refreshKey={refreshKey} /></NestedView>;
   if (view === 'dataQuality') return <NestedView title="Feature Database" onBack={() => setView('menu')}><DataQualityScreen refreshKey={refreshKey} /></NestedView>;
+  if (view === 'skills') return <NestedView title="Skill Engine" onBack={() => setView('menu')}><SkillEngineScreen refreshKey={refreshKey} /></NestedView>;
 
   return (
     <Screen>
       <Text style={styles.heading}>我的</Text>
-      <Text style={styles.subtitle}>管理提醒、统计、规则、交易记录和 Feature Database。</Text>
+      <Text style={styles.subtitle}>管理提醒、统计、规则、交易记录、Feature Database 和 Skill Engine。</Text>
       {entries.map((entry) => (
         <TouchableOpacity key={entry.key} style={styles.card} onPress={() => setView(entry.key)}>
           <Text style={styles.cardTitle}>{entry.title}</Text>

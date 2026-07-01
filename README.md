@@ -1,6 +1,6 @@
 # Trade Discipline Journal
 
-React Native + Expo app for crypto trade planning, review, discipline rules, local statistics, the V2 AI Trading Copilot foundation, the V3 Feature Database, the V4 Backend + CCXT Market Service, and the V5 Python Feature Engine.
+React Native + Expo app for crypto trade planning, review, discipline rules, local statistics, the V2 AI Trading Copilot foundation, the V3 Feature Database, the V4 Backend + CCXT Market Service, the V5 Python Feature Engine, and the V6 Skill Engine.
 
 This app is not investment advice. It only connects to public market data for alerts and research context, does not use trading permissions, does not provide buy/sell signals, and does not place orders.
 
@@ -91,6 +91,42 @@ Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:8000/features/market?exchan
 Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:8000/features/trade-context?exchange=okx&symbol=BTC%2FUSDT&direction=long&entryPrice=100000&timeframe=1h&limit=200"
 ```
 
+## V6 Skill Engine
+
+V6 adds a local Skill Engine. A Skill is a reusable, versioned research module that reads saved trades, `TradeFeatures`, `TradeAnalysis`, and `TradeSnapshots`, then writes structured research observations to the local SQLite `SkillResults` table.
+
+Implemented in this version:
+
+- `src/skill-engine/skillTypes.ts` for Skill contracts.
+- `src/skill-engine/skillRegistry.ts` for built-in Skill discovery.
+- `src/skill-engine/skillRunner.ts` for running one Skill, all Skills for a trade, or all Skills for all trades.
+- `src/skill-engine/builtInSkills.ts` with five built-in Skills.
+- `src/skill-engine/skillResultMapper.ts` for database mapping.
+- Local SQLite `SkillResults` table with indexes.
+- Skill Engine page under `我的 -> Skill Engine`.
+- Trade Detail section showing recent Skill Results for that trade.
+
+Built-in V6 Skills:
+
+- `entry_quality_v1`: evaluates saved entry context from feature quality, risk, setup consistency, and reviewable evidence.
+- `risk_discipline_v1`: compares recorded trade risk with local risk rules.
+- `market_context_v1`: summarizes market state from saved Feature Database fields.
+- `discipline_loss_review_v1`: classifies review behavior after a trade is completed.
+- `setup_pattern_v1`: classifies saved setup pattern context.
+
+V6 safety boundaries:
+
+- No real AI integration.
+- No signal engine.
+- No trading advice.
+- No Trade API.
+- No Withdraw API.
+- No API Key storage.
+- No account position reads.
+- No automatic trading.
+- No order placement or cancellation.
+- Skill output is research observation only and is not a trading command.
+
 ## V2 AI Trading Copilot Foundation
 
 V2 moves the app from a pure trading journal toward an AI Trading Copilot foundation while keeping the V1.1 safety boundaries.
@@ -170,6 +206,7 @@ The Data Quality page can export all local `TradeFeatures` rows as CSV through t
 - OKX public market monitor for planned trades while the app is open in the foreground.
 - Optional V4 FastAPI backend for OKX public ticker, OHLCV, and market features.
 - Optional V5 Python Feature Engine for public-market feature enrichment.
+- Local V6 Skill Engine for reusable research observations.
 - Four bottom tabs: 首页, 计划, 复盘, 我的. Monitor, Statistics, Rules, and History live under 我的.
 - SQLite local storage. No login and no cloud sync.
 
@@ -407,6 +444,7 @@ src/
   feature-engine/  Local Feature Database generation and CSV export
   screens/         MVP screens
   services/        Risk, statistics, date, notification, OKX monitor, V2 Copilot data flow
+  skill-engine/    Local research Skill Engine and built-in Skills
   theme/           Colors and spacing
   types.ts         App TypeScript models
 ```
@@ -420,5 +458,6 @@ src/
 - `TradeSnapshots`
 - `TradeTimeline`
 - `TradeFeatures`
+- `SkillResults`
 
-The database is created locally by `expo-sqlite` on first app launch. V2 and V3 add new tables through non-destructive migrations with `CREATE TABLE IF NOT EXISTS`; old `Trades`, `AccountSettings`, and `AlertLogs` data is not deleted or rebuilt.
+The database is created locally by `expo-sqlite` on first app launch. V2, V3, and V6 add new tables through non-destructive migrations with `CREATE TABLE IF NOT EXISTS`; old `Trades`, `AccountSettings`, `AlertLogs`, and `TradeFeatures` data is not deleted or rebuilt.
