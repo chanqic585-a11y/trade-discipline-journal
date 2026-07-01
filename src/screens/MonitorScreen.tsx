@@ -16,7 +16,7 @@ export function MonitorScreen() {
       <View style={styles.foregroundWarning}>
         <Text style={styles.foregroundTitle}>前台提醒限制</Text>
         <Text style={styles.foregroundText}>
-          当前版本只在 APP 前台运行时提醒。锁屏、后台运行或系统杀掉 APP 后，价格监听可能停止。
+          当前版本只在 App 前台运行时提醒，锁屏或后台可能停止监听。
         </Text>
       </View>
 
