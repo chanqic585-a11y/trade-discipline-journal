@@ -168,6 +168,7 @@ export interface DataQualitySummary {
   featureRows: number;
   missingFeatureRows: number;
   averageQualityScore: number;
+  backendEnrichedRows: number;
   nullFieldCount: number;
   exportableRows: number;
   latestGeneratedAt: string | null;
@@ -220,6 +221,44 @@ export interface MarketFeatures {
   volatility: number | null;
   trendDirection: 'up' | 'down' | 'flat' | 'unknown';
   source: 'ccxt_public';
+}
+
+export type FeatureTrendDirection = 'up' | 'down' | 'flat' | 'unknown';
+export type TrendAlignment = 'aligned' | 'against' | 'neutral' | 'unknown';
+
+export interface PythonMarketFeatures {
+  exchange: string;
+  symbol: string;
+  timeframe: string;
+  limit: number;
+  price: number | null;
+  volume: number | null;
+  emaFast: number | null;
+  emaSlow: number | null;
+  macd: number | null;
+  macdSignal: number | null;
+  macdHistogram: number | null;
+  rsi: number | null;
+  atr: number | null;
+  change1h: number | null;
+  change4h: number | null;
+  change24h: number | null;
+  high24h: number | null;
+  low24h: number | null;
+  volatility: number | null;
+  trendDirection: FeatureTrendDirection;
+  candlePattern: string | null;
+  dataQualityScore: number;
+  missingFields: string[];
+  source: 'python_feature_engine_v5';
+  generatedAt: string;
+}
+
+export interface PythonTradeContextFeatures extends PythonMarketFeatures {
+  entryPrice: number;
+  distanceFromEntryPercent: number | null;
+  direction: Direction;
+  trendAlignment: TrendAlignment;
 }
 
 export interface CreateTradeInput {

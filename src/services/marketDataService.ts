@@ -76,7 +76,7 @@ async function fetchJsonWithTimeout<T>(url: string): Promise<T> {
   }
 }
 
-async function requestMarketApi<T>(
+export async function requestMarketApi<T>(
   path: string,
   params: Record<string, string | number>,
 ): Promise<T | null> {
@@ -97,7 +97,7 @@ async function requestMarketApi<T>(
         })
         .catch((error) => {
           if (!settled) {
-            console.warn(`V4 market API unavailable at ${baseUrl}.`, error);
+            console.warn(`Market API unavailable at ${baseUrl}.`, error);
           }
         })
         .finally(() => {

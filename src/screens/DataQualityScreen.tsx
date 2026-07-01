@@ -6,7 +6,7 @@ import { Button, StatCard } from '../components/Controls';
 import { Screen } from '../components/Screen';
 import { getDataQualitySummary, listTradeFeatures } from '../db/repositories';
 import { buildTradeFeaturesCsv } from '../feature-engine/csvExport';
-import { generateAllTradeFeatures } from '../feature-engine/featureEngine';
+import { generateAllTradeFeatures, refreshAllTradeFeaturesFromBackend } from '../feature-engine/featureEngine';
 import { formatDateTime } from '../services/date';
 import { DataQualitySummary, TradeFeature } from '../types';
 import { colors, spacing } from '../theme/theme';
@@ -17,6 +17,7 @@ function emptySummary(): DataQualitySummary {
     featureRows: 0,
     missingFeatureRows: 0,
     averageQualityScore: 0,
+    backendEnrichedRows: 0,
     nullFieldCount: 0,
     exportableRows: 0,
     latestGeneratedAt: null,
@@ -57,6 +58,8 @@ export function DataQualityScreen({ refreshKey }: { refreshKey: number }) {
   const [summary, setSummary] = useState<DataQualitySummary>(emptySummary);
   const [features, setFeatures] = useState<TradeFeature[]>([]);
   const [working, setWorking] = useState(false);
+  const [backendWorking, setBackendWorking] = useState(false);
+  const [backendStatus, setBackendStatus] = useState('Backend Feature Engine has not been checked yet.');
   const [exporting, setExporting] = useState(false);
 
   const load = async () => {
@@ -69,7 +72,7 @@ export function DataQualityScreen({ refreshKey }: { refreshKey: number }) {
     load().catch(console.error);
   }, [refreshKey]);
 
-  const generate = async () => {
+  const generateLocal = async () => {
     setWorking(true);
     try {
       const result = await generateAllTradeFeatures();
@@ -79,6 +82,35 @@ export function DataQualityScreen({ refreshKey }: { refreshKey: number }) {
       Alert.alert('Feature generation failed', error instanceof Error ? error.message : 'Unable to generate features.');
     } finally {
       setWorking(false);
+    }
+  };
+
+  const refreshFromBackend = async () => {
+    setBackendWorking(true);
+    try {
+      const result = await refreshAllTradeFeaturesFromBackend();
+      await load();
+
+      if (result.backendEnriched === 0 && result.totalTrades > 0) {
+        setBackendStatus('Backend Feature Engine unavailable. Local fallback is still available.');
+      } else {
+        setBackendStatus(
+          `Backend enriched ${result.backendEnriched} rows. Local fallback used for ${result.localFallback} rows.`,
+        );
+      }
+
+      Alert.alert(
+        'Feature refresh complete',
+        `Backend enriched ${result.backendEnriched} of ${result.totalTrades} trades. Local fallback: ${result.localFallback}.`,
+      );
+    } catch (error) {
+      setBackendStatus('Backend Feature Engine unavailable. Local fallback is still available.');
+      Alert.alert(
+        'Backend refresh failed',
+        error instanceof Error ? error.message : 'Backend Feature Engine unavailable. Local fallback is still available.',
+      );
+    } finally {
+      setBackendWorking(false);
     }
   };
 
@@ -138,27 +170,38 @@ export function DataQualityScreen({ refreshKey }: { refreshKey: number }) {
         <Text style={styles.kicker}>Feature Database</Text>
         <Text style={styles.title}>Data Quality</Text>
         <Text style={styles.subtitle}>
-          Local-only feature rows generated from Trade, TradeSnapshots, and TradeAnalysis. Missing market data is stored as null.
+          Python Feature Engine converts public market data into structured research features. Missing data is stored as null.
         </Text>
       </View>
 
       <View style={styles.grid}>
         <StatCard label="Trades" value={String(summary.totalTrades)} />
         <StatCard label="Feature Rows" value={String(summary.featureRows)} />
+        <StatCard label="Backend Rows" value={String(summary.backendEnrichedRows)} />
         <StatCard label="Missing Rows" value={String(summary.missingFeatureRows)} danger={summary.missingFeatureRows > 0} />
         <StatCard label="Avg Quality" value={`${summary.averageQualityScore.toFixed(0)}%`} danger={summary.averageQualityScore < 50 && summary.featureRows > 0} />
       </View>
 
       <View style={styles.panel}>
+        <Text style={styles.panelTitle}>V5 Python Feature Engine</Text>
+        <Text style={styles.panelText}>{backendStatus}</Text>
+        <Text style={styles.panelMuted}>
+          Uses public market data only. It does not create signals, place orders, or use API keys.
+        </Text>
+      </View>
+
+      <View style={styles.panel}>
         <Text style={styles.panelTitle}>Export Readiness</Text>
         <Text style={styles.panelText}>Exportable rows: {summary.exportableRows}</Text>
+        <Text style={styles.panelText}>Backend enriched rows: {summary.backendEnrichedRows}</Text>
         <Text style={styles.panelText}>Null feature values: {summary.nullFieldCount}</Text>
         <Text style={styles.panelText}>
           Latest generation: {summary.latestGeneratedAt ? formatDateTime(summary.latestGeneratedAt) : '-'}
         </Text>
       </View>
 
-      <Button label={working ? 'Generating...' : 'Generate / Refresh Features'} onPress={generate} />
+      <Button label={working ? 'Generating...' : 'Generate Local Features'} onPress={generateLocal} />
+      <Button label={backendWorking ? 'Refreshing...' : 'Refresh From Backend'} onPress={refreshFromBackend} tone="neutral" />
       <Button label={exporting ? 'Exporting...' : 'Export TradeFeatures CSV'} onPress={exportCsv} tone="neutral" />
 
       <Text style={styles.sectionTitle}>Recent Feature Rows</Text>
@@ -176,6 +219,7 @@ export function DataQualityScreen({ refreshKey }: { refreshKey: number }) {
               <Text style={styles.meta}>
                 {feature.direction} · {feature.tradeStatus} · {formatDateTime(feature.entryTime)}
               </Text>
+              <Text style={styles.meta}>Source: {feature.source}</Text>
               <Text style={styles.meta}>Trend: {feature.trend ?? '-'}</Text>
               <Text style={styles.meta}>Setup: {feature.setupType ?? '-'}</Text>
               <Text style={styles.missing}>
@@ -236,6 +280,11 @@ const styles = StyleSheet.create({
   panelText: {
     color: colors.text,
     lineHeight: 20,
+  },
+  panelMuted: {
+    color: colors.muted,
+    lineHeight: 20,
+    marginTop: spacing.xs,
   },
   sectionTitle: {
     color: colors.text,

@@ -569,9 +569,13 @@ export async function listTradeFeatures(): Promise<TradeFeature[]> {
 
 export async function getDataQualitySummary(): Promise<DataQualitySummary> {
   const db = await getDatabase();
-  const [tradeCount, featureCount, qualityRow, latestRow] = await Promise.all([
+  const [tradeCount, featureCount, backendCount, qualityRow, latestRow] = await Promise.all([
     db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM Trades'),
     db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM TradeFeatures'),
+    db.getFirstAsync<{ count: number }>(
+      `SELECT COUNT(*) as count FROM TradeFeatures
+        WHERE source = 'python_feature_engine_v5'`,
+    ),
     db.getFirstAsync<{ averageQualityScore: number | null }>(
       'SELECT AVG(dataQualityScore) as averageQualityScore FROM TradeFeatures',
     ),
@@ -596,6 +600,7 @@ export async function getDataQualitySummary(): Promise<DataQualitySummary> {
     featureRows,
     missingFeatureRows: Math.max(0, totalTrades - featureRows),
     averageQualityScore: qualityRow?.averageQualityScore ?? 0,
+    backendEnrichedRows: backendCount?.count ?? 0,
     nullFieldCount,
     exportableRows: featureRows,
     latestGeneratedAt: latestRow?.latestGeneratedAt ?? null,

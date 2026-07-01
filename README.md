@@ -1,6 +1,6 @@
 # Trade Discipline Journal
 
-React Native + Expo app for crypto trade planning, review, discipline rules, local statistics, the V2 AI Trading Copilot foundation, the V3 Feature Database, and the V4 Backend + CCXT Market Service.
+React Native + Expo app for crypto trade planning, review, discipline rules, local statistics, the V2 AI Trading Copilot foundation, the V3 Feature Database, the V4 Backend + CCXT Market Service, and the V5 Python Feature Engine.
 
 This app is not investment advice. It only connects to public market data for alerts and research context, does not use trading permissions, does not provide buy/sell signals, and does not place orders.
 
@@ -55,6 +55,41 @@ Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:8000/market/ticker?exchange
 ```
 
 For Expo Go on a physical Android phone, the app tries to infer your computer's Metro host and call the same host on port `8000`. Keep the phone and computer on the same network. If the backend is unreachable, the app remains usable and falls back to local data, mock analysis, and OKX foreground WebSocket monitoring.
+
+## V5 Python Feature Engine
+
+V5 adds a Python Feature Engine to the FastAPI backend. It converts OKX public OHLCV and ticker data into structured research features that the app can upsert into the local SQLite `TradeFeatures` table.
+
+Implemented in this version:
+
+- `api/feature_engine.py` for pure-Python indicator calculation.
+- `GET /features/market?exchange=okx&symbol=BTC/USDT&timeframe=1h&limit=200`.
+- `GET /features/trade-context?exchange=okx&symbol=BTC/USDT&direction=long&entryPrice=100000&timeframe=1h&limit=200`.
+- EMA, MACD, RSI, ATR, volatility, trend direction, data quality, and missing-field output.
+- App-side `featureApiService.ts`.
+- Data Quality page action: `Refresh From Backend`.
+- Backend feature rows are written to local SQLite through the existing `TradeFeatures` upsert path.
+- If the backend is unavailable, the app keeps the V3 local feature generation fallback.
+
+V5 safety boundaries:
+
+- Public market data only.
+- No real AI integration.
+- No signal engine.
+- No buy/sell advice.
+- No Trade API.
+- No Withdraw API.
+- No API Key storage.
+- No account balance or position reads.
+- No automatic trading.
+- No order placement or cancellation.
+
+Run the backend as described in the V4 section, then test V5:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:8000/features/market?exchange=okx&symbol=BTC%2FUSDT&timeframe=1h&limit=200"
+Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:8000/features/trade-context?exchange=okx&symbol=BTC%2FUSDT&direction=long&entryPrice=100000&timeframe=1h&limit=200"
+```
 
 ## V2 AI Trading Copilot Foundation
 
@@ -134,6 +169,7 @@ The Data Quality page can export all local `TradeFeatures` rows as CSV through t
 - Rules & Reminders for local risk settings and local review notification.
 - OKX public market monitor for planned trades while the app is open in the foreground.
 - Optional V4 FastAPI backend for OKX public ticker, OHLCV, and market features.
+- Optional V5 Python Feature Engine for public-market feature enrichment.
 - Four bottom tabs: 首页, 计划, 复盘, 我的. Monitor, Statistics, Rules, and History live under 我的.
 - SQLite local storage. No login and no cloud sync.
 
@@ -360,6 +396,7 @@ Default limits:
 ```text
 App.tsx
 api/
+  feature_engine.py Python Feature Engine for public market features
   main.py          FastAPI public market API
   market_service.py
   requirements.txt
