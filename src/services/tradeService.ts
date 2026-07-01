@@ -1,4 +1,5 @@
 import { createTrade, getTradeById } from '../db/repositories';
+import { generateTradeFeature } from '../feature-engine/featureEngine';
 import { CreateQuickTradeInput, MarketType } from '../types';
 import { generateAndSaveMockAnalysis } from './analysisService';
 import { calculateTradeRiskMetrics } from './risk';
@@ -85,6 +86,8 @@ export async function createQuickTrade(input: CreateQuickTradeInput): Promise<nu
       takeProfitDistancePercent: risk.takeProfitDistancePercent,
     },
   });
+
+  await generateTradeFeature(tradeId);
 
   return tradeId;
 }

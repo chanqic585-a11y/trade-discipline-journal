@@ -1,6 +1,6 @@
 # Trade Discipline Journal
 
-React Native + Expo app for crypto trade planning, review, discipline rules, local statistics, and the V2 AI Trading Copilot foundation.
+React Native + Expo app for crypto trade planning, review, discipline rules, local statistics, the V2 AI Trading Copilot foundation, and the V3 Feature Database.
 
 This app is not investment advice. It only connects to OKX public market data for alerts, does not use trading permissions, does not provide buy/sell signals, and does not place orders.
 
@@ -25,6 +25,48 @@ Important boundaries:
 - No Trade API key or Withdraw API key is stored.
 - The app does not place orders and does not automate trading.
 - Mock Analysis describes saved trade context only. It does not recommend buying or selling and does not predict future price.
+
+## V3 Feature Database
+
+V3 adds a local Feature Database that converts each trade into a structured row for future analysis, AI memory, RAG, reports, and model training.
+
+Implemented in this version:
+
+- Local `TradeFeatures` SQLite table.
+- `src/feature-engine/featureEngine.ts` for deterministic local feature generation.
+- `src/feature-engine/csvExport.ts` for CSV text export.
+- Data Quality page under `我的 -> Feature Database`.
+- Feature generation from `Trades`, latest `TradeSnapshots`, and latest `TradeAnalysis`.
+- Missing market data is stored as `null`, not guessed.
+
+V3 does not include:
+
+- Python backend.
+- CCXT.
+- Real AI API.
+- Exchange Trade API permissions.
+- Withdraw API permissions.
+- Automatic trading or order placement.
+
+### TradeFeatures Fields
+
+`TradeFeatures` stores:
+
+- Identity: `tradeId`, `featureVersion`, `source`
+- Trade context: `symbol`, `marketType`, `direction`, `tradeStatus`
+- Timing: `entryTime`, `exitTime`
+- Prices and size: `entryPrice`, `exitPrice`, `currentPrice`, `positionSize`, `leverage`
+- Market features: `volume`, `ema`, `macd`, `rsi`, `atr`, `openInterest`, `funding`, `fearGreed`, `change24h`
+- Listing and volatility: `listingTime`, `hoursSinceListing`, `marketVolatility`
+- Pattern context: `candlePattern`, `trend`, `support`, `resistance`, `setupType`, `setupConfidence`
+- Result labels: `finalPnl`, `isDisciplineLoss`, `followedPlan`, `emotionBefore`, `isFollowingSystem`
+- Quality metadata: `dataQualityScore`, `missingFieldsJson`, `generatedAt`, `createdAt`, `updatedAt`
+
+Fields that are not available in the current local app, such as real volume, EMA, MACD, Open Interest, Funding, Fear & Greed, and listing time, are intentionally stored as `null`.
+
+### CSV Export
+
+The Data Quality page can export all local `TradeFeatures` rows as CSV through the device share sheet. The export is generated locally from SQLite data. It is not uploaded to a server.
 
 ## Features
 
@@ -268,6 +310,7 @@ src/
   components/      Shared form and layout components
   constants.ts     Labels and enum options
   db/              SQLite initialization and CRUD
+  feature-engine/  Local Feature Database generation and CSV export
   screens/         MVP screens
   services/        Risk, statistics, date, notification, OKX monitor, V2 Copilot data flow
   theme/           Colors and spacing
@@ -282,5 +325,6 @@ src/
 - `TradeAnalysis`
 - `TradeSnapshots`
 - `TradeTimeline`
+- `TradeFeatures`
 
-The database is created locally by `expo-sqlite` on first app launch. V2 adds new tables through non-destructive migrations with `CREATE TABLE IF NOT EXISTS`; old `Trades`, `AccountSettings`, and `AlertLogs` data is not deleted or rebuilt.
+The database is created locally by `expo-sqlite` on first app launch. V2 and V3 add new tables through non-destructive migrations with `CREATE TABLE IF NOT EXISTS`; old `Trades`, `AccountSettings`, and `AlertLogs` data is not deleted or rebuilt.

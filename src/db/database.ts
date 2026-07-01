@@ -114,6 +114,53 @@ export async function initDatabase() {
       FOREIGN KEY (tradeId) REFERENCES Trades(id)
     );
 
+    CREATE TABLE IF NOT EXISTS TradeFeatures (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tradeId INTEGER NOT NULL UNIQUE,
+      featureVersion TEXT NOT NULL,
+      source TEXT NOT NULL,
+      symbol TEXT NOT NULL,
+      marketType TEXT NOT NULL,
+      direction TEXT NOT NULL,
+      tradeStatus TEXT NOT NULL,
+      entryTime TEXT NOT NULL,
+      exitTime TEXT,
+      entryPrice REAL NOT NULL,
+      exitPrice REAL,
+      currentPrice REAL,
+      positionSize REAL NOT NULL,
+      leverage INTEGER NOT NULL,
+      volume REAL,
+      ema REAL,
+      macd REAL,
+      rsi REAL,
+      atr REAL,
+      openInterest REAL,
+      funding REAL,
+      fearGreed REAL,
+      change24h REAL,
+      listingTime TEXT,
+      hoursSinceListing REAL,
+      marketVolatility REAL,
+      candlePattern TEXT,
+      trend TEXT,
+      support REAL,
+      resistance REAL,
+      setupType TEXT,
+      setupConfidence REAL,
+      finalPnl REAL,
+      isDisciplineLoss INTEGER,
+      followedPlan INTEGER,
+      emotionBefore TEXT,
+      isFollowingSystem INTEGER,
+      dataQualityScore REAL NOT NULL,
+      missingFieldsJson TEXT NOT NULL,
+      generatedAt TEXT NOT NULL,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL,
+      FOREIGN KEY (tradeId) REFERENCES Trades(id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_trades_createdAt ON Trades(createdAt);
     CREATE INDEX IF NOT EXISTS idx_trades_status ON Trades(status);
     CREATE INDEX IF NOT EXISTS idx_alert_logs_trade_type ON AlertLogs(tradeId, alertType);
@@ -122,6 +169,10 @@ export async function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_trade_snapshots_trade_created ON TradeSnapshots(tradeId, createdAt);
     CREATE INDEX IF NOT EXISTS idx_trade_timeline_trade_created ON TradeTimeline(tradeId, createdAt);
     CREATE INDEX IF NOT EXISTS idx_trade_timeline_created ON TradeTimeline(createdAt);
+    CREATE INDEX IF NOT EXISTS idx_trade_features_trade ON TradeFeatures(tradeId);
+    CREATE INDEX IF NOT EXISTS idx_trade_features_symbol ON TradeFeatures(symbol);
+    CREATE INDEX IF NOT EXISTS idx_trade_features_setup ON TradeFeatures(setupType);
+    CREATE INDEX IF NOT EXISTS idx_trade_features_quality ON TradeFeatures(dataQualityScore);
   `);
 
   const accountColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(AccountSettings)');
@@ -132,5 +183,5 @@ export async function initDatabase() {
     await db.execAsync('ALTER TABLE AccountSettings ADD COLUMN setupCompleted INTEGER NOT NULL DEFAULT 0;');
   }
 
-  await db.execAsync('PRAGMA user_version = 2;');
+  await db.execAsync('PRAGMA user_version = 3;');
 }

@@ -117,6 +117,62 @@ export interface TradeTimelineEvent {
   createdAt: string;
 }
 
+export interface TradeFeature {
+  id: number;
+  tradeId: number;
+  featureVersion: string;
+  source: string;
+  symbol: string;
+  marketType: MarketType;
+  direction: Direction;
+  tradeStatus: TradeStatus;
+  entryTime: string;
+  exitTime: string | null;
+  entryPrice: number;
+  exitPrice: number | null;
+  currentPrice: number | null;
+  positionSize: number;
+  leverage: number;
+  volume: number | null;
+  ema: number | null;
+  macd: number | null;
+  rsi: number | null;
+  atr: number | null;
+  openInterest: number | null;
+  funding: number | null;
+  fearGreed: number | null;
+  change24h: number | null;
+  listingTime: string | null;
+  hoursSinceListing: number | null;
+  marketVolatility: number | null;
+  candlePattern: string | null;
+  trend: string | null;
+  support: number | null;
+  resistance: number | null;
+  setupType: string | null;
+  setupConfidence: number | null;
+  finalPnl: number | null;
+  isDisciplineLoss: boolean | null;
+  followedPlan: boolean | null;
+  emotionBefore: EmotionBefore | null;
+  isFollowingSystem: boolean | null;
+  dataQualityScore: number;
+  missingFieldsJson: string;
+  generatedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DataQualitySummary {
+  totalTrades: number;
+  featureRows: number;
+  missingFeatureRows: number;
+  averageQualityScore: number;
+  nullFieldCount: number;
+  exportableRows: number;
+  latestGeneratedAt: string | null;
+}
+
 export interface CreateTradeInput {
   symbol: string;
   marketType: MarketType;

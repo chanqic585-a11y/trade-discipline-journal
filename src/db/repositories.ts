@@ -3,10 +3,12 @@ import {
   AccountSettings,
   AlertLog,
   AlertType,
+  DataQualitySummary,
   CreateTradeInput,
   ReviewTradeInput,
   Trade,
   TradeAnalysis,
+  TradeFeature,
   TradeSnapshot,
   TradeStatus,
   TradeTimelineEvent,
@@ -38,6 +40,12 @@ type TradeAnalysisRow = Omit<TradeAnalysis, 'isMock'> & {
   isMock: number;
 };
 
+type TradeFeatureRow = Omit<TradeFeature, 'isDisciplineLoss' | 'followedPlan' | 'isFollowingSystem'> & {
+  isDisciplineLoss: number | null;
+  followedPlan: number | null;
+  isFollowingSystem: number | null;
+};
+
 function toBoolean(value: number | null): boolean | null {
   if (value === null) return null;
   return value === 1;
@@ -67,6 +75,15 @@ function mapTradeAnalysis(row: TradeAnalysisRow): TradeAnalysis {
   return {
     ...row,
     isMock: row.isMock === 1,
+  };
+}
+
+function mapTradeFeature(row: TradeFeatureRow): TradeFeature {
+  return {
+    ...row,
+    isDisciplineLoss: toBoolean(row.isDisciplineLoss),
+    followedPlan: toBoolean(row.followedPlan),
+    isFollowingSystem: toBoolean(row.isFollowingSystem),
   };
 }
 
@@ -428,4 +445,159 @@ export async function listRecentTimeline(limit = 5): Promise<TradeTimelineEvent[
       LIMIT ?`,
     [limit],
   );
+}
+
+export async function upsertTradeFeature(input: Omit<TradeFeature, 'id' | 'createdAt' | 'updatedAt'>): Promise<number> {
+  const db = await getDatabase();
+  const now = new Date().toISOString();
+  const result = await db.runAsync(
+    `INSERT INTO TradeFeatures (
+      tradeId, featureVersion, source, symbol, marketType, direction, tradeStatus,
+      entryTime, exitTime, entryPrice, exitPrice, currentPrice, positionSize, leverage,
+      volume, ema, macd, rsi, atr, openInterest, funding, fearGreed, change24h,
+      listingTime, hoursSinceListing, marketVolatility, candlePattern, trend, support,
+      resistance, setupType, setupConfidence, finalPnl, isDisciplineLoss, followedPlan,
+      emotionBefore, isFollowingSystem, dataQualityScore, missingFieldsJson, generatedAt,
+      createdAt, updatedAt
+    ) VALUES (
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+    )
+    ON CONFLICT(tradeId) DO UPDATE SET
+      featureVersion = excluded.featureVersion,
+      source = excluded.source,
+      symbol = excluded.symbol,
+      marketType = excluded.marketType,
+      direction = excluded.direction,
+      tradeStatus = excluded.tradeStatus,
+      entryTime = excluded.entryTime,
+      exitTime = excluded.exitTime,
+      entryPrice = excluded.entryPrice,
+      exitPrice = excluded.exitPrice,
+      currentPrice = excluded.currentPrice,
+      positionSize = excluded.positionSize,
+      leverage = excluded.leverage,
+      volume = excluded.volume,
+      ema = excluded.ema,
+      macd = excluded.macd,
+      rsi = excluded.rsi,
+      atr = excluded.atr,
+      openInterest = excluded.openInterest,
+      funding = excluded.funding,
+      fearGreed = excluded.fearGreed,
+      change24h = excluded.change24h,
+      listingTime = excluded.listingTime,
+      hoursSinceListing = excluded.hoursSinceListing,
+      marketVolatility = excluded.marketVolatility,
+      candlePattern = excluded.candlePattern,
+      trend = excluded.trend,
+      support = excluded.support,
+      resistance = excluded.resistance,
+      setupType = excluded.setupType,
+      setupConfidence = excluded.setupConfidence,
+      finalPnl = excluded.finalPnl,
+      isDisciplineLoss = excluded.isDisciplineLoss,
+      followedPlan = excluded.followedPlan,
+      emotionBefore = excluded.emotionBefore,
+      isFollowingSystem = excluded.isFollowingSystem,
+      dataQualityScore = excluded.dataQualityScore,
+      missingFieldsJson = excluded.missingFieldsJson,
+      generatedAt = excluded.generatedAt,
+      updatedAt = excluded.updatedAt`,
+    [
+      input.tradeId,
+      input.featureVersion,
+      input.source,
+      input.symbol,
+      input.marketType,
+      input.direction,
+      input.tradeStatus,
+      input.entryTime,
+      input.exitTime,
+      input.entryPrice,
+      input.exitPrice,
+      input.currentPrice,
+      input.positionSize,
+      input.leverage,
+      input.volume,
+      input.ema,
+      input.macd,
+      input.rsi,
+      input.atr,
+      input.openInterest,
+      input.funding,
+      input.fearGreed,
+      input.change24h,
+      input.listingTime,
+      input.hoursSinceListing,
+      input.marketVolatility,
+      input.candlePattern,
+      input.trend,
+      input.support,
+      input.resistance,
+      input.setupType,
+      input.setupConfidence,
+      input.finalPnl,
+      input.isDisciplineLoss === null ? null : input.isDisciplineLoss ? 1 : 0,
+      input.followedPlan === null ? null : input.followedPlan ? 1 : 0,
+      input.emotionBefore,
+      input.isFollowingSystem === null ? null : input.isFollowingSystem ? 1 : 0,
+      input.dataQualityScore,
+      input.missingFieldsJson,
+      input.generatedAt,
+      now,
+      now,
+    ],
+  );
+  return result.lastInsertRowId;
+}
+
+export async function getTradeFeatureByTradeId(tradeId: number): Promise<TradeFeature | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<TradeFeatureRow>('SELECT * FROM TradeFeatures WHERE tradeId = ?', [tradeId]);
+  return row ? mapTradeFeature(row) : null;
+}
+
+export async function listTradeFeatures(): Promise<TradeFeature[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<TradeFeatureRow>(
+    `SELECT * FROM TradeFeatures
+      ORDER BY entryTime DESC`,
+  );
+  return rows.map(mapTradeFeature);
+}
+
+export async function getDataQualitySummary(): Promise<DataQualitySummary> {
+  const db = await getDatabase();
+  const [tradeCount, featureCount, qualityRow, latestRow] = await Promise.all([
+    db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM Trades'),
+    db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM TradeFeatures'),
+    db.getFirstAsync<{ averageQualityScore: number | null }>(
+      'SELECT AVG(dataQualityScore) as averageQualityScore FROM TradeFeatures',
+    ),
+    db.getFirstAsync<{ latestGeneratedAt: string | null }>(
+      'SELECT MAX(generatedAt) as latestGeneratedAt FROM TradeFeatures',
+    ),
+  ]);
+  const features = await listTradeFeatures();
+  const nullFieldCount = features.reduce((sum, feature) => {
+    try {
+      const missing = JSON.parse(feature.missingFieldsJson) as unknown;
+      return sum + (Array.isArray(missing) ? missing.length : 0);
+    } catch {
+      return sum;
+    }
+  }, 0);
+  const totalTrades = tradeCount?.count ?? 0;
+  const featureRows = featureCount?.count ?? 0;
+
+  return {
+    totalTrades,
+    featureRows,
+    missingFeatureRows: Math.max(0, totalTrades - featureRows),
+    averageQualityScore: qualityRow?.averageQualityScore ?? 0,
+    nullFieldCount,
+    exportableRows: featureRows,
+    latestGeneratedAt: latestRow?.latestGeneratedAt ?? null,
+  };
 }

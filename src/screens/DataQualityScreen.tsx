@@ -1,0 +1,226 @@
+import React, { useEffect, useState } from 'react';
+import { Alert, Share, StyleSheet, Text, View } from 'react-native';
+import { Button, StatCard } from '../components/Controls';
+import { Screen } from '../components/Screen';
+import { getDataQualitySummary, listTradeFeatures } from '../db/repositories';
+import { buildTradeFeaturesCsv } from '../feature-engine/csvExport';
+import { generateAllTradeFeatures } from '../feature-engine/featureEngine';
+import { formatDateTime } from '../services/date';
+import { DataQualitySummary, TradeFeature } from '../types';
+import { colors, spacing } from '../theme/theme';
+
+function emptySummary(): DataQualitySummary {
+  return {
+    totalTrades: 0,
+    featureRows: 0,
+    missingFeatureRows: 0,
+    averageQualityScore: 0,
+    nullFieldCount: 0,
+    exportableRows: 0,
+    latestGeneratedAt: null,
+  };
+}
+
+function parseMissingFields(feature: TradeFeature) {
+  try {
+    const parsed = JSON.parse(feature.missingFieldsJson) as unknown;
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function DataQualityScreen({ refreshKey }: { refreshKey: number }) {
+  const [summary, setSummary] = useState<DataQualitySummary>(emptySummary);
+  const [features, setFeatures] = useState<TradeFeature[]>([]);
+  const [working, setWorking] = useState(false);
+
+  const load = async () => {
+    const [nextSummary, nextFeatures] = await Promise.all([getDataQualitySummary(), listTradeFeatures()]);
+    setSummary(nextSummary);
+    setFeatures(nextFeatures);
+  };
+
+  useEffect(() => {
+    load().catch(console.error);
+  }, [refreshKey]);
+
+  const generate = async () => {
+    setWorking(true);
+    try {
+      const result = await generateAllTradeFeatures();
+      await load();
+      Alert.alert('Feature Database updated', `Generated ${result.generated} feature rows from ${result.totalTrades} trades.`);
+    } catch (error) {
+      Alert.alert('Feature generation failed', error instanceof Error ? error.message : 'Unable to generate features.');
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const exportCsv = async () => {
+    if (features.length === 0) {
+      Alert.alert('No export rows', 'Generate TradeFeatures before exporting CSV.');
+      return;
+    }
+
+    const csv = buildTradeFeaturesCsv(features);
+    await Share.share({
+      title: 'TradeFeatures CSV',
+      message: csv,
+    });
+  };
+
+  return (
+    <Screen>
+      <View style={styles.header}>
+        <Text style={styles.kicker}>Feature Database</Text>
+        <Text style={styles.title}>Data Quality</Text>
+        <Text style={styles.subtitle}>
+          Local-only feature rows generated from Trade, TradeSnapshots, and TradeAnalysis. Missing market data is stored as null.
+        </Text>
+      </View>
+
+      <View style={styles.grid}>
+        <StatCard label="Trades" value={String(summary.totalTrades)} />
+        <StatCard label="Feature Rows" value={String(summary.featureRows)} />
+        <StatCard label="Missing Rows" value={String(summary.missingFeatureRows)} danger={summary.missingFeatureRows > 0} />
+        <StatCard label="Avg Quality" value={`${summary.averageQualityScore.toFixed(0)}%`} danger={summary.averageQualityScore < 50 && summary.featureRows > 0} />
+      </View>
+
+      <View style={styles.panel}>
+        <Text style={styles.panelTitle}>Export Readiness</Text>
+        <Text style={styles.panelText}>Exportable rows: {summary.exportableRows}</Text>
+        <Text style={styles.panelText}>Null feature values: {summary.nullFieldCount}</Text>
+        <Text style={styles.panelText}>
+          Latest generation: {summary.latestGeneratedAt ? formatDateTime(summary.latestGeneratedAt) : '-'}
+        </Text>
+      </View>
+
+      <Button label={working ? 'Generating...' : 'Generate / Refresh Features'} onPress={generate} />
+      <Button label="Export TradeFeatures CSV" onPress={exportCsv} tone="neutral" />
+
+      <Text style={styles.sectionTitle}>Recent Feature Rows</Text>
+      {features.length === 0 ? (
+        <Text style={styles.empty}>No feature rows yet. Generate features to populate the database.</Text>
+      ) : (
+        features.slice(0, 8).map((feature) => {
+          const missing = parseMissingFields(feature);
+          return (
+            <View key={feature.id} style={styles.featureCard}>
+              <View style={styles.row}>
+                <Text style={styles.featureTitle}>{feature.symbol}</Text>
+                <Text style={styles.badge}>{feature.dataQualityScore}%</Text>
+              </View>
+              <Text style={styles.meta}>
+                {feature.direction} · {feature.tradeStatus} · {formatDateTime(feature.entryTime)}
+              </Text>
+              <Text style={styles.meta}>Trend: {feature.trend ?? '-'}</Text>
+              <Text style={styles.meta}>Setup: {feature.setupType ?? '-'}</Text>
+              <Text style={styles.missing}>
+                Missing: {missing.length === 0 ? 'none' : missing.slice(0, 8).join(', ')}
+              </Text>
+            </View>
+          );
+        })
+      )}
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  header: {
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  kicker: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: '800',
+    marginBottom: spacing.xs,
+  },
+  title: {
+    color: colors.text,
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  subtitle: {
+    color: colors.muted,
+    lineHeight: 20,
+    marginTop: spacing.xs,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  panel: {
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  panelTitle: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: '800',
+    marginBottom: spacing.xs,
+  },
+  panelText: {
+    color: colors.text,
+    lineHeight: 20,
+  },
+  sectionTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  empty: {
+    color: colors.muted,
+  },
+  featureCard: {
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  row: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  featureTitle: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  badge: {
+    backgroundColor: colors.accentSoft,
+    borderRadius: 8,
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: '800',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
+  },
+  meta: {
+    color: colors.muted,
+    lineHeight: 19,
+    marginTop: 4,
+  },
+  missing: {
+    color: colors.warning,
+    lineHeight: 19,
+    marginTop: 4,
+  },
+});

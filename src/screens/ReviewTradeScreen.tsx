@@ -4,6 +4,7 @@ import { Button, Field, SegmentedControl } from '../components/Controls';
 import { Screen } from '../components/Screen';
 import { directionLabels, lossTypeLabels, lossTypeOptions } from '../constants';
 import { listUnreviewedTrades, reviewTrade } from '../db/repositories';
+import { generateTradeFeature } from '../feature-engine/featureEngine';
 import { formatDateTime } from '../services/date';
 import { LossType, Trade } from '../types';
 import { colors, spacing } from '../theme/theme';
@@ -60,6 +61,7 @@ export function ReviewTradeScreen({ onSaved }: { onSaved: () => void }) {
       reviewNote,
       nextImprovement,
     });
+    await generateTradeFeature(selectedTrade.id);
     Alert.alert('复盘完成', '首页和统计已更新。');
     onSaved();
   };
