@@ -44,7 +44,7 @@ api\.venv\Scripts\python.exe -m pip install -r api\requirements.txt
 Start the backend:
 
 ```powershell
-api\.venv\Scripts\python.exe -m uvicorn api.main:app --host 127.0.0.1 --port 8000
+api\.venv\Scripts\python.exe -m uvicorn api.main:app --host 0.0.0.0 --port 8000
 ```
 
 Check the backend:
