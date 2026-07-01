@@ -28,6 +28,50 @@ def _percentage_change(current: float | None, previous: float | None) -> float |
     return ((current - previous) / previous) * 100
 
 
+def _timeframe_to_minutes(timeframe: str) -> int | None:
+    normalized = timeframe.strip()
+    if len(normalized) < 2:
+        return None
+
+    unit = normalized[-1]
+    amount = normalized[:-1]
+    if not amount.isdigit():
+        return None
+
+    multipliers = {
+        "m": 1,
+        "h": 60,
+        "d": 1440,
+        "w": 10080,
+    }
+    multiplier = multipliers.get(unit.lower())
+    if multiplier is None or unit == "M":
+        return None
+
+    return int(amount) * multiplier
+
+
+def _change_for_hours(
+    current: float | None,
+    closes: list[float],
+    timeframe: str,
+    hours: int,
+) -> float | None:
+    timeframe_minutes = _timeframe_to_minutes(timeframe)
+    if timeframe_minutes is None or timeframe_minutes <= 0:
+        return None
+
+    target_minutes = hours * 60
+    if target_minutes % timeframe_minutes != 0:
+        return None
+
+    candle_offset = target_minutes // timeframe_minutes
+    if candle_offset < 1 or len(closes) <= candle_offset:
+        return None
+
+    return _percentage_change(current, closes[-(candle_offset + 1)])
+
+
 def _ema(values: list[float], period: int) -> float | None:
     if period <= 0 or len(values) < period:
         return None
@@ -224,8 +268,8 @@ class FeatureEngine:
         macd, macd_signal, macd_histogram = _macd(closes)
         rsi = _rsi(closes)
         atr = _atr(candles)
-        change_1h = _percentage_change(price, closes[-2] if len(closes) >= 2 else None)
-        change_4h = _percentage_change(price, closes[-5] if len(closes) >= 5 else None)
+        change_1h = _change_for_hours(price, closes, timeframe, 1)
+        change_4h = _change_for_hours(price, closes, timeframe, 4)
         change_24h = _number(ticker.get("priceChange24h")) or _percentage_change(
             price,
             closes[-25] if len(closes) >= 25 else None,
